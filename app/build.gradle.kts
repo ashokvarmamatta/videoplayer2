@@ -78,6 +78,12 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
 
+    implementation("androidx.compose.material3:material3:1.5.0-alpha07")
+    implementation("com.google.android.material:material:1.14.0-alpha06")
+
+    implementation("androidx.compose.material:material-icons-core-android:1.7.8")
+
+
     // Koin
     implementation("io.insert-koin:koin-core:4.1.1")
     implementation("io.insert-koin:koin-android:4.1.1")

@@ -27,20 +27,20 @@ fun VideoListScreen(
     onVideoClick: (Video) -> Unit
 ) {
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text(text = title) })
-        }
+
     ) { paddingValues ->
+        paddingValues
+
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+                .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             when {
                 isLoading -> {
                     CircularProgressIndicator()
                 }
+
                 videoList.isEmpty() -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -56,6 +56,7 @@ fun VideoListScreen(
                         )
                     }
                 }
+
                 else -> {
                     // Display the actual list of videos using your VideoCard
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -85,7 +86,7 @@ fun VideoCard(video: Video, onClick: () -> Unit) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Log.e("","video url : ${video.thumbnailUri}")
+            Log.e("", "video url : ${video.thumbnailUri}")
             // Using AsyncImage with the thumbnail URI for video thumbnail display
             AsyncImage(
                 model = video.thumbnailUri,
@@ -149,14 +150,14 @@ fun formatSize(size: Long): String {
  * Accepts Long to prevent integer overflow for long videos.
  */
 fun formatDuration(durationMs: Long): String {
-    Log.e("","time :{$durationMs}")
+    Log.e("", "time :{$durationMs}")
     // Use the input duration directly as Long
     val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(durationMs.toLong())
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
 
-    Log.e("","time :$hours:$minutes:$seconds   $totalSeconds")
+    Log.e("", "time :$hours:$minutes:$seconds   $totalSeconds")
 
     return if (hours > 0) {
         String.format("%02d:%02d:%02d", hours, minutes, seconds)

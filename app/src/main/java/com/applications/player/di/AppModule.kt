@@ -1,6 +1,7 @@
 // In your KoinModule.kt file or similar setup file
 
 import com.applications.player.data.VideoRepository
+import com.applications.player.presentation.homeScreen.HomeActivityViewModel
 
 import com.applications.player.presentation.videoplayer.VideoPlayerViewModel
 import com.applications.player.presentation.videosOfFolder.VideoViewModel
@@ -18,6 +19,8 @@ val appModule = module {
     viewModel { VideoViewModel(get()) }
     viewModel { FoldersViewModel(get()) }
     viewModel { VideoPlayerViewModel(androidApplication()) }
+
+    viewModel { HomeActivityViewModel() }
 
 
 

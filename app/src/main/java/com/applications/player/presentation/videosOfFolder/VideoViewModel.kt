@@ -10,12 +10,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-// Define the state data class for the video list
-data class VideoListState(
-    val videos: List<Video> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
 
 class VideoViewModel(private val videoRepository: VideoRepository) : ViewModel() {
 
