@@ -20,8 +20,7 @@ val appModule = module {
     viewModel { FoldersViewModel(get()) }
     viewModel { VideoPlayerViewModel(androidApplication()) }
 
-    viewModel { HomeActivityViewModel() }
-
+    viewModel { HomeActivityViewModel(get()) }
 
 
 }

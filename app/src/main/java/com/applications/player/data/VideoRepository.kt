@@ -10,6 +10,9 @@ import android.util.Log
 import com.applications.player.model.Video
 import com.applications.player.presentation.videosbyfolders.Folder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -281,4 +284,114 @@ class VideoRepository(private val context: Context) {
         }
         return thumbnailUri
     }
+
+
+
+
+
+
+    /**
+     * Fetches all videos from the device and emits them in chunks
+     * using a Kotlin Flow. This is ideal for large datasets to update the
+     * UI progressively.
+     *
+     * IMPORTANT: Uses flowOn(Dispatchers.IO) to ensure the ContentResolver query
+     * and I/O-intensive operations run on the IO thread, fixing the Flow invariant
+     * violation error.
+     *
+     * @return A Flow of List<Video>, emitting every time a chunk (10 videos) is ready.
+     */
+    fun getAllVideosChunked(): Flow<List<Video>> = flow {
+        val CHUNK_SIZE = 10
+        val videos = mutableListOf<Video>()
+        val contentResolver: ContentResolver = context.contentResolver
+
+        val collection: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        } else {
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        }
+
+        val projection = arrayOf(
+            MediaStore.Video.Media._ID,
+            MediaStore.Video.Media.DISPLAY_NAME,
+            MediaStore.Video.Media.SIZE,
+            MediaStore.Video.Media.DURATION,
+            MediaStore.Video.Media.DATA,
+            MediaStore.Video.Media.DATE_ADDED,
+            MediaStore.Video.Media.BUCKET_DISPLAY_NAME
+        )
+
+        val sortOrder = "${MediaStore.Video.Media.DATE_ADDED} DESC"
+
+        try {
+            // The actual database query runs here
+            contentResolver.query(
+                collection,
+                projection,
+                null, // selection
+                null, // selectionArgs
+                sortOrder
+            )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+                val nameColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+                val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+                val durationColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
+                val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+                val folderNameColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(idColumn)
+                    val name = cursor.getString(nameColumn)
+                    val size = cursor.getLong(sizeColumn)
+
+                    var duration = cursor.getLong(durationColumn)
+                    val contentUri: Uri = Uri.withAppendedPath(collection, id.toString())
+                    val dataPath = cursor.getString(dataColumn)
+
+                    // Fallback: If duration is 0, use MediaMetadataRetriever (Assumes retrieveDurationFromUri is defined)
+                    if (duration <= 0) {
+                        // Note: This function also performs I/O, but it's fine within the flow builder
+                        // as flowOn(Dispatchers.IO) sets the context for the entire block.
+                        duration = retrieveDurationFromUri(contentUri)
+                    }
+
+                    val folderName = cursor.getString(folderNameColumn)
+                    val thumbnailUri: Uri = Uri.fromFile(File(dataPath))
+
+                    val video = Video(
+                        id = id,
+                        name = name,
+                        uri = contentUri,
+                        size = size,
+                        duration = duration,
+                        thumbnailUri = thumbnailUri,
+                        folderName = folderName,
+                        folderPath = File(dataPath).parentFile?.absolutePath ?: "Unknown"
+                    )
+
+                    videos.add(video)
+
+                    // Emit the list whenever the CHUNK_SIZE is reached
+                    if (videos.size % CHUNK_SIZE == 0) {
+                        // Emit a copy of the list up to this point
+                        emit(videos.toList())
+                    }
+                }
+
+                // Emit any remaining videos if the total count wasn't a multiple of CHUNK_SIZE
+                if (videos.isNotEmpty() && videos.size % CHUNK_SIZE != 0) {
+                    emit(videos.toList())
+                }
+            }
+        } catch (e: Exception) {
+            // Log the error for debugging
+            Log.e("VideoRepository", "Error fetching videos in chunks", e)
+        }
+    }
+        // Set the execution context for the upstream operations (the flow builder) to Dispatchers.IO
+        .flowOn(Dispatchers.IO)
 }

@@ -233,7 +233,7 @@ fun SelectionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Choose an action for ${video.name}")
+            Text("Choose an action for ${video.name.take(15)}")
         },
         text = {
             Text("What would you like to do with this video?")

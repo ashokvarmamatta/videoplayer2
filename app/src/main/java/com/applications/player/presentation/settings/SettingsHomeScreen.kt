@@ -48,11 +48,11 @@ import com.applications.player.R
 @Composable
 fun SettingsHomeScreen() {
     Scaffold(
-        topBar = {
+       /* topBar = {
             TopAppBar(
                 title = { Text("Settings") },
                 navigationIcon = {
-                    IconButton(onClick = { /* Handle back navigation */ }) {
+                    IconButton(onClick = { *//* Handle back navigation *//* }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Go back"
@@ -64,8 +64,9 @@ fun SettingsHomeScreen() {
                     titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
-        }
+        }*/
     ) { paddingValues ->
+        paddingValues
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

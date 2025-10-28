@@ -1,8 +1,9 @@
 package com.applications.player.presentation.homeScreen
 
+import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,27 +31,31 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.startActivity
+import androidx.media3.common.util.UnstableApi
 import coil3.compose.AsyncImage
 import com.applications.player.R
+import com.applications.player.model.Video
 import com.applications.player.presentation.playlists.AllPlaylistsScreen
 import com.applications.player.presentation.settings.SettingsHomeScreen
+import com.applications.player.presentation.videoMerging.VideoMergingActivity
+import com.applications.player.presentation.videocrop.VideoCropActivity
+import com.applications.player.presentation.videoplayer.VideoPlayerActivityCompose
 import com.applications.player.presentation.videosOfFolder.AllVideosActivity
+import com.applications.player.presentation.videosOfFolder.SelectionDialog
 import com.applications.player.presentation.videosOfFolder.VideoListScreen
-import com.applications.player.presentation.videosOfFolder.VideoViewModel
-import com.applications.player.presentation.videosbyfolders.FoldersViewModel
 import com.applications.player.presentation.videosbyfolders.VideosByFoldersScreen
+import com.applications.player.presentation.videosplitting.VideoSplittingActivity
 import org.koin.compose.viewmodel.koinViewModel
 
 @Preview(showBackground = true)
 @Composable
 fun HomeActivityScreen(
-    homeActivityViewModel: HomeActivityViewModel = koinViewModel(),
-    foldersViewModel: FoldersViewModel = koinViewModel(),
-    videoViewModel: VideoViewModel = koinViewModel()
+    homeActivityViewModel: HomeActivityViewModel = koinViewModel()
 ) {
     Scaffold(
         /* topBar = { TopAppBar() }, bottomBar = {
@@ -59,9 +65,12 @@ fun HomeActivityScreen(
         paddingValues
         val state by homeActivityViewModel.homeActivityState.collectAsState()
         val context = LocalContext.current
-        val folderListState by foldersViewModel.folderListState.collectAsState()
 
 
+        LaunchedEffect(Unit) {
+            // homeActivityViewModel.loadAllVideos()
+            homeActivityViewModel.onNavigationItemSelected(NavItem.FOLDERS)
+        }
 
 
         Box(
@@ -86,9 +95,9 @@ fun HomeActivityScreen(
                         NavItem.FOLDERS -> {
 
 
-                            Log.e("", "folders ${folderListState.folders}")
+                            Log.e("", "folders ${state.folders}")
                             VideosByFoldersScreen(
-                                folders = folderListState.folders,
+                                folders = state.folders,
                                 onFolderClick = { folder ->
                                     val intent = Intent(context, AllVideosActivity::class.java)
                                     intent.putExtra("FILTER_FOLDER_PATH", folder.path)
@@ -100,13 +109,13 @@ fun HomeActivityScreen(
                         }
 
                         NavItem.VIDEOS -> {
-                            val state by videoViewModel.videoListState.collectAsState()
+                            val state by homeActivityViewModel.homeActivityState.collectAsState()
                             VideoListScreen(
                                 videoList = state.videos, // Use the videos from the state
-                                isLoading = state.isLoading, // Pass loading state to UI
+                                isLoading = state.isAllLoading, // Pass loading state to UI
                                 title = "All Videos", // Pass dynamic title
                                 onVideoClick = { video1 ->
-
+                                    homeActivityViewModel.onVideoSelected(video1)
                                 }
                             )
                         }
@@ -125,7 +134,15 @@ fun HomeActivityScreen(
                 }
 
 
-                BottomNavRow(viewModel = homeActivityViewModel)
+                BottomNavRow(viewModel = homeActivityViewModel, state)
+
+                if (state.selectedVideo != null) {
+                    ChooseVideoFunctionality(
+                        selectedVideo = state.selectedVideo,
+                        context,
+                        homeActivityViewModel
+                    )
+                }
             }
 
 
@@ -136,12 +153,21 @@ fun HomeActivityScreen(
 
 
 @Composable
-fun BottomNavRow(viewModel: HomeActivityViewModel) {
-    val items = listOf(
-        "Folders" to R.drawable.folder_video,
-        "Videos" to R.drawable.allvideo,
-        "Playlists" to R.drawable.playlist,
-        "Settings" to R.drawable.settings
+fun BottomNavRow(viewModel: HomeActivityViewModel, state: HomeActivityState) {
+    // Define the different states for each navigation item (label, unselected icon, selected icon)
+    val navItems = listOf(
+        Triple("Folders", R.drawable.folders_unselected, R.drawable.folder_video),
+        Triple("Videos", R.drawable.allvideo, R.drawable.allvideos_selected),
+        Triple(
+            "Playlists",
+            R.drawable.playlist,
+            R.drawable.playlist
+        ), // Assuming you have a playlist_selected icon
+        Triple(
+            "Settings",
+            R.drawable.settings,
+            R.drawable.settings
+        )   // Assuming you have a settings_selected icon
     )
 
     Row(
@@ -152,29 +178,32 @@ fun BottomNavRow(viewModel: HomeActivityViewModel) {
         horizontalArrangement = Arrangement.SpaceAround, // Distribute items evenly
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items.forEach { item ->
-            val label = item.first
-            val iconRes = item.second
+        navItems.forEach { (label, unselectedIcon, selectedIcon) ->
+
+            // Determine which NavItem this iteration corresponds to
+            val currentNavItem = when (label) {
+                "Folders" -> NavItem.FOLDERS
+                "Videos" -> NavItem.VIDEOS
+                "Playlists" -> NavItem.PLAYLISTS
+                "Settings" -> NavItem.SETTINGS
+                else -> throw IllegalArgumentException("Unknown nav item label: $label")
+            }
+
+            // Check if this item is the one currently selected in the state
+            val isSelected = state.itemSelected == currentNavItem
+
+            // Dynamically choose the icon and color based on the selection status
+            val iconRes = if (isSelected) selectedIcon else unselectedIcon
+            //  val tint =if (isSelected) Color(0xFF6200EE) else Color.Black // Example: Purple for selected, Black for unselected
+            val tint = Color.Black // Example: Purple for selected, Black for unselected
 
             // Each item is a Column containing an Icon and a Text
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .clickable {
-
-
-                        val navItem = when (label) {
-                            "Folders" -> NavItem.FOLDERS
-                            "Videos" -> NavItem.VIDEOS
-                            "Playlists" -> NavItem.PLAYLISTS
-                            "Settings" -> NavItem.SETTINGS
-                            else -> null
-                        }
-                        navItem?.let {
-                            viewModel.onNavigationItemSelected(navItem)
-                        }
-
-
+                        // When clicked, notify the ViewModel to update the state
+                        viewModel.onNavigationItemSelected(currentNavItem)
                     }
                     .padding(4.dp)
             ) {
@@ -182,19 +211,18 @@ fun BottomNavRow(viewModel: HomeActivityViewModel) {
                     painter = painterResource(id = iconRes),
                     contentDescription = label,
                     modifier = Modifier.size(24.dp),
-                    tint = Color.Black // Set the icon tint to black
+                    tint = tint // Apply the dynamic tint
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = label,
                     textAlign = TextAlign.Center,
-                    color = Color.Black // Set the text color to black
+                    color = tint // Also apply the tint to the text for consistency
                 )
             }
         }
     }
 }
-
 
 // Extracted the Top App Bar for clarity
 @Composable
@@ -206,14 +234,70 @@ fun TopAppBar() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Spacer(modifier = Modifier.width(8.dp))
-        AsyncImage(
+
+
+        /*AsyncImage(
             model = R.drawable.menu,
             contentDescription = "Menu Icon",
             modifier = Modifier
                 .size(48.dp)
                 .padding(10.dp),
             colorFilter = ColorFilter.tint(Color.Black)
+        )*/
+        Text(
+            "Video Player",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f).padding(top = 40.dp, start = 10.dp),
+            fontWeight = FontWeight.Bold
         )
-        Text("Video Player")
     }
+}
+
+
+@OptIn(UnstableApi::class)
+@Composable
+fun ChooseVideoFunctionality(
+    selectedVideo: Video?,
+    context: Context,
+    homeActivityViewModel: HomeActivityViewModel
+) {
+    if (selectedVideo != null)
+        SelectionDialog(
+            video = selectedVideo!!,
+            onDismiss = {homeActivityViewModel.onVideoSelected(null) },
+            onPlayClick = { video ->
+                homeActivityViewModel.onVideoSelected(null)
+                val intent = Intent(context, VideoPlayerActivityCompose::class.java)
+                intent.putExtra("video", video)
+                startActivity(context, intent, null)
+            },
+            onSplitClick = { video ->
+                homeActivityViewModel.onVideoSelected(null)
+                val intent = Intent(context, VideoSplittingActivity::class.java)
+                intent.putExtra("videoUri", video.uri)
+                startActivity(context, intent, null)
+            },
+            onCropClick = { video ->
+                homeActivityViewModel.onVideoSelected(null)
+                val intent = Intent(context, VideoCropActivity::class.java)
+                intent.putExtra("videoUri", video.uri)
+                startActivity(context, intent, null)
+            },
+            onMergeClick = { video ->
+                homeActivityViewModel.onVideoSelected(null)
+                val intent = Intent(context, VideoMergingActivity::class.java)
+                intent.putExtra("videoUri", video.uri)
+                startActivity(context, intent, null)
+            },
+            // --- NEW: Handle Delete Click ---
+            onDeleteClick = { video ->
+                homeActivityViewModel.onVideoSelected(null)
+                homeActivityViewModel.deleteVideo(video)
+                // In a full MVVM/Repository pattern, this would call videoViewModel.deleteVideo(video)
+                // We use a Toast and refresh here as a placeholder for the delete operation.
+                Log.d("AllVideosActivity", "Attempting to delete video: ${video.name}")
+                // Toast.makeText(this@AllVideosActivity, "Delete request sent for ${video.name}. List will refresh.", Toast.LENGTH_SHORT).show()
+                //  loadVideosBasedOnIntent() // Refresh list immediately
+            }
+        )
 }

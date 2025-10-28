@@ -21,30 +21,23 @@ class HomeActivity : AppCompatActivity() {
     val binding: ActivityHomeBinding by lazy {
         ActivityHomeBinding.inflate(layoutInflater)
     }
-    private val foldersViewModel: FoldersViewModel by viewModel()
-    private val videoViewModel: VideoViewModel by viewModel()
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(binding.root)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+       /* ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
-        }
+        }*/
 
 
-        videoViewModel.loadAllVideos()
+
         binding.composeView.setContent {
             VideoPlayerTheme() {
-                val state by foldersViewModel.folderListState.collectAsState()
-                val state1 by videoViewModel.videoListState.collectAsState()
-                Log.e("", "in activity ${state.folders}")
-                Log.e("", "in activity ${state1.videos}")
-                HomeActivityScreen(
-                    foldersViewModel = foldersViewModel,
-                    videoViewModel = videoViewModel
-                )
+                HomeActivityScreen()
             }
 
         }
