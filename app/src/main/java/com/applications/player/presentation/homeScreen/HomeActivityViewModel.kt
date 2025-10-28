@@ -1,17 +1,21 @@
 package com.applications.player.presentation.homeScreen
 
+import PlaylistEntity
+import PlaylistRepository
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.applications.player.data.VideoRepository
 import com.applications.player.model.Video
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
-class HomeActivityViewModel(private  val videoRepository: VideoRepository) : ViewModel() {
+class HomeActivityViewModel(private  val videoRepository: VideoRepository, private val playlistRepository: PlaylistRepository) : ViewModel() {
 
     private val _homeActivityModel = MutableStateFlow(HomeActivityState(itemSelected = NavItem.VIDEOS))
     val homeActivityState: StateFlow<HomeActivityState> = _homeActivityModel.asStateFlow()
@@ -122,7 +126,6 @@ class HomeActivityViewModel(private  val videoRepository: VideoRepository) : Vie
             }
         }
     }
-
 
 }
 

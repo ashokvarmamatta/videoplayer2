@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-parcelize")
+    alias  (libs.plugins.ksp)
+
 }
 
 android {
@@ -128,6 +130,17 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
 
+
+
+    // Room Database
+    val room_version = "2.8.3"
+    implementation("androidx.room:room-runtime:$room_version")
+    ksp("androidx.room:room-compiler:$room_version") // This line now works
+    implementation("androidx.room:room-ktx:$room_version")
+
+
+    // Add this line for Gson
+    implementation("com.google.code.gson:gson:2.10.1")
 
 
 

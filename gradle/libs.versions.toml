@@ -13,6 +13,8 @@ material = "1.13.0"
 activity = "1.10.1"
 constraintlayout = "2.2.1"
 coil3 ='3.3.0'
+ksp = "2.3.0" # Use the latest compatible KSP version
+hilt = "2.51.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,10 +44,19 @@ coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.r
 coil-mp = { module = "io.coil-kt.coil3:coil", version.ref = "coil3" }
 
 
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+
+
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+
 
 [bundles]
 coil = [

@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.media3.common.util.UnstableApi
 import com.applications.player.R
 import com.applications.player.databinding.ActivityAllVideosBinding
 import com.applications.player.model.Video
@@ -127,6 +129,7 @@ class AllVideosActivity : AppCompatActivity() {
     }
 
     // New function to set up the Compose content and observe the state
+    @OptIn(UnstableApi::class)
     private fun setupComposeContent() {
         binding.composeView.setContent {
             VideoPlayerTheme {
@@ -166,6 +169,9 @@ class AllVideosActivity : AppCompatActivity() {
                             val intent = Intent(this@AllVideosActivity, VideoPlayerActivityCompose::class.java)
                             intent.putExtra("video", video)
                             startActivity(intent)
+                        },
+                        onAddToPlayListChecked = { video ->
+                            // Handle adding to playlist logic here
                         },
                         onSplitClick = { video ->
                             selectedVideo = null
@@ -225,6 +231,7 @@ fun SelectionDialog(
     video: Video,
     onDismiss: () -> Unit,
     onPlayClick: (Video) -> Unit,
+    onAddToPlayListChecked:(Video) -> Unit,
     onSplitClick: (Video) -> Unit,
     onCropClick: (Video) -> Unit,
     onMergeClick: (Video) -> Unit,
@@ -243,9 +250,12 @@ fun SelectionDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 TextButton(onClick = { onPlayClick(video) }) { Text("Play") }
+                TextButton(onClick = { onAddToPlayListChecked(video) }) { Text("Add to PlayList") }
                 TextButton(onClick = { onSplitClick(video) }) { Text("Split") }
 //                TextButton(onClick = { onCropClick(video) }) { Text("Crop") }
                 TextButton(onClick = { onMergeClick(video) }) { Text("Merge/Delete Gap") }
+
+
                 // --- NEW: Delete Button Added ---
                 TextButton(onClick = { onDeleteClick(video) }) { Text("Delete Video") }
             }

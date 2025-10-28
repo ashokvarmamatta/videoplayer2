@@ -1,5 +1,7 @@
 package com.applications.player.presentation.homeScreen
 
+import PlaylistSelectionDialog
+import PlaylistsViewModel
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -28,7 +30,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +38,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.startActivity
 import androidx.media3.common.util.UnstableApi
-import coil3.compose.AsyncImage
 import com.applications.player.R
 import com.applications.player.model.Video
 import com.applications.player.presentation.playlists.AllPlaylistsScreen
@@ -64,6 +64,10 @@ fun HomeActivityScreen(
     ) { paddingValues ->
         paddingValues
         val state by homeActivityViewModel.homeActivityState.collectAsState()
+        val playlistsViewModel: PlaylistsViewModel = koinViewModel()
+        val videoToAddToPlaylist by playlistsViewModel.videoToAddToPlaylist.collectAsState()
+        val playlists by playlistsViewModel.playlists.collectAsState()
+
         val context = LocalContext.current
 
 
@@ -140,7 +144,22 @@ fun HomeActivityScreen(
                     ChooseVideoFunctionality(
                         selectedVideo = state.selectedVideo,
                         context,
-                        homeActivityViewModel
+                        homeActivityViewModel,playlistsViewModel
+                    )
+                }
+
+                // 4. Show the new PlaylistSelectionDialog when its state is active
+                videoToAddToPlaylist?.let { video ->
+                    PlaylistSelectionDialog(
+                        video = video,
+                        playlists = playlists,
+                        onDismiss = { playlistsViewModel.onDismissPlaylistDialog() },
+                        onPlaylistSelected = { playlist, videoToAdd ->
+                            playlistsViewModel.addVideoToPlaylist(playlist, videoToAdd)
+                        },
+                        onAddNewPlaylist = { playlistName ->
+                            playlistsViewModel.createNewPlaylist(playlistName)
+                        }
                     )
                 }
             }
@@ -259,7 +278,8 @@ fun TopAppBar() {
 fun ChooseVideoFunctionality(
     selectedVideo: Video?,
     context: Context,
-    homeActivityViewModel: HomeActivityViewModel
+    homeActivityViewModel: HomeActivityViewModel,
+    playlistsViewModel: PlaylistsViewModel
 ) {
     if (selectedVideo != null)
         SelectionDialog(
@@ -270,6 +290,10 @@ fun ChooseVideoFunctionality(
                 val intent = Intent(context, VideoPlayerActivityCompose::class.java)
                 intent.putExtra("video", video)
                 startActivity(context, intent, null)
+            },
+            onAddToPlayListChecked = {
+                homeActivityViewModel.onVideoSelected(null)
+                playlistsViewModel.onAddToPlaylistRequest(selectedVideo)
             },
             onSplitClick = { video ->
                 homeActivityViewModel.onVideoSelected(null)
