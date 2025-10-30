@@ -68,6 +68,8 @@ fun HomeActivityScreen(
         val videoToAddToPlaylist by playlistsViewModel.videoToAddToPlaylist.collectAsState()
         val playlists by playlistsViewModel.playlists.collectAsState()
 
+
+
         val context = LocalContext.current
 
 
@@ -113,7 +115,7 @@ fun HomeActivityScreen(
                         }
 
                         NavItem.VIDEOS -> {
-                            val state by homeActivityViewModel.homeActivityState.collectAsState()
+
                             VideoListScreen(
                                 videoList = state.videos, // Use the videos from the state
                                 isLoading = state.isAllLoading, // Pass loading state to UI
@@ -126,7 +128,9 @@ fun HomeActivityScreen(
 
                         NavItem.PLAYLISTS -> {
 
-                            AllPlaylistsScreen()
+                            AllPlaylistsScreen(){
+
+                            }
                         }
 
                         NavItem.SETTINGS -> {
@@ -162,6 +166,9 @@ fun HomeActivityScreen(
                         }
                     )
                 }
+
+
+
             }
 
 

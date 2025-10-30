@@ -1,6 +1,8 @@
 package com.applications.player.presentation.videosOfFolder
 
 
+import PlaylistSelectionDialog
+import PlaylistsViewModel
 import android.Manifest.permission
 import android.content.Intent
 import android.net.Uri
@@ -41,6 +43,7 @@ import com.applications.player.ui.theme.VideoPlayerTheme
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import com.applications.player.presentation.videoMerging.VideoMergingActivity
 import com.applications.player.presentation.videoplayer.VideoPlayerActivityCompose
+import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
 
 class AllVideosActivity : AppCompatActivity() {
@@ -136,6 +139,11 @@ class AllVideosActivity : AppCompatActivity() {
                 // *** FIX: Observing the correct StateFlow (videoListState) ***
                 val state by videoViewModel.videoListState.collectAsState()
                 var selectedVideo by remember { mutableStateOf<Video?>(null) }
+                var videoForPlaylistDialog by remember { mutableStateOf<Video?>(null) }
+
+                val playlistsViewModel: PlaylistsViewModel = koinViewModel()
+                val videoToAddToPlaylist by playlistsViewModel.videoToAddToPlaylist.collectAsState()
+                val playlists by playlistsViewModel.playlists.collectAsState()
 
                 // Set the screen title dynamically
                 val folderPath = intent.getStringExtra("FILTER_FOLDER_PATH")
@@ -171,7 +179,8 @@ class AllVideosActivity : AppCompatActivity() {
                             startActivity(intent)
                         },
                         onAddToPlayListChecked = { video ->
-                            // Handle adding to playlist logic here
+                           videoForPlaylistDialog = video
+
                         },
                         onSplitClick = { video ->
                             selectedVideo = null
@@ -203,6 +212,24 @@ class AllVideosActivity : AppCompatActivity() {
                         }
                     )
                 }
+              if(videoForPlaylistDialog!=null) {
+                  // Handle adding to playlist logic here
+                  PlaylistSelectionDialog(
+                      video = selectedVideo!!,
+                      playlists = playlists,
+                      onDismiss = { playlistsViewModel.onDismissPlaylistDialog() },
+                      onPlaylistSelected = { playlist, videoToAdd ->
+                          playlistsViewModel.addVideoToPlaylist(playlist, videoToAdd)
+                          videoForPlaylistDialog = null
+                          selectedVideo=null
+                      },
+                      onAddNewPlaylist = { playlistName ->
+                          playlistsViewModel.createNewPlaylist(playlistName)
+
+                      }
+                  )
+              }
+
             }
         }
     }

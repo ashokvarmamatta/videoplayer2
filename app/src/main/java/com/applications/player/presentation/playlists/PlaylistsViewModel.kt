@@ -21,7 +21,10 @@ class PlaylistsViewModel(
             initialValue = emptyList()
         )
 
-    // --- NEW STATE ---
+    // --- NEW STATE for selected playlist ---
+    private val _selectedPlaylist = MutableStateFlow<PlaylistEntity?>(null)
+    val selectedPlaylist: StateFlow<PlaylistEntity?> = _selectedPlaylist.asStateFlow()
+
     // This will hold the video that the user wants to add to a playlist.
     // When it's not null, we'll show the dialog.
     private val _videoToAddToPlaylist = MutableStateFlow<Video?>(null)
@@ -42,6 +45,21 @@ class PlaylistsViewModel(
     fun onDismissPlaylistDialog() {
         _videoToAddToPlaylist.value = null
     }
+
+    /**
+     * Called when a user selects a playlist from the list.
+     */
+    fun onPlaylistSelected(playlist: PlaylistEntity) {
+        _selectedPlaylist.value = playlist
+    }
+
+    /**
+     * Called to go back from the video list of a playlist.
+     */
+    fun onBackFromPlaylist() {
+        _selectedPlaylist.value = null
+    }
+
 
     // --- MODIFIED FUNCTION ---
     /**
