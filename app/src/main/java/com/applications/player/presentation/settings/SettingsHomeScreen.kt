@@ -11,32 +11,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.applications.player.R
+import org.koin.androidx.compose.koinViewModel
 
 // NOTE: Since I don't have access to the specific icons from your screenshot,
 // I'll use placeholders from Icons.Default and Icons.AutoMirrored.
@@ -46,30 +39,15 @@ import com.applications.player.R
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsHomeScreen() {
+fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+
     Scaffold(
-       /* topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = { *//* Handle back navigation *//* }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go back"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
-                )
-            )
-        }*/
     ) { paddingValues ->
-        paddingValues
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
 
         ) {
             // Navigation Items (Title + Description + Arrow)
@@ -77,7 +55,7 @@ fun SettingsHomeScreen() {
                 SettingsNavigationItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "App Language",
-                    description = null,
+                    description = uiState.appLanguage,
                     onClick = { /* Navigate to language settings */ }
                 )
             }
@@ -93,7 +71,7 @@ fun SettingsHomeScreen() {
                 SettingsNavigationItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Default screen orientation",
-                    description = "Auto-rotate(sensor)",
+                    description = uiState.defaultScreenOrientation,
                     onClick = { /* Navigate to orientation settings */ }
                 )
             }
@@ -101,7 +79,7 @@ fun SettingsHomeScreen() {
                 SettingsNavigationItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Decoder",
-                    description = "Use HW Decoder in Priority",
+                    description = uiState.decoder,
                     onClick = { /* Navigate to decoder settings */ }
                 )
             }
@@ -125,8 +103,8 @@ fun SettingsHomeScreen() {
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Show Hidden Files",
                     description = "Show files starting with dot(.).",
-                    initialCheckedState = false,
-                    onCheckedChange = { /* Update state in ViewModel */ }
+                    checked = uiState.showHiddenFiles,
+                    onCheckedChange = viewModel::onShowHiddenFilesChange
                 )
             }
             item {
@@ -134,8 +112,8 @@ fun SettingsHomeScreen() {
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Remember aspect ratio",
                     description = "Remember aspect ratio for all videos.",
-                    initialCheckedState = true,
-                    onCheckedChange = { /* Update state in ViewModel */ }
+                    checked = uiState.rememberAspectRatio,
+                    onCheckedChange = viewModel::onRememberAspectRatioChange
                 )
             }
 
@@ -144,54 +122,54 @@ fun SettingsHomeScreen() {
                 SettingsSwitchItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Longpress to play at 2X Speed",
-                    initialCheckedState = true,
+                    checked = uiState.longPressToPlayAt2xSpeed,
                     description = "On", // Displaying "On" below is optional, doing it as description for consistency
-                    onCheckedChange = { /* Update state in ViewModel */ }
+                    onCheckedChange = viewModel::onLongPressToPlayAt2xSpeedChange
                 )
             }
             item {
                 SettingsSwitchItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Remember background play",
-                    initialCheckedState = true,
+                    checked = uiState.rememberBackgroundPlay,
                     description = "Remember background play for all videos.",
-                    onCheckedChange = { /* Update state in ViewModel */ }
+                    onCheckedChange = viewModel::onRememberBackgroundPlayChange
                 )
             }
             item {
                 SettingsSwitchItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Remember brightness",
-                    initialCheckedState = true,
+                    checked = uiState.rememberBrightness,
                     description = "Turn on to remember brightness for all videos.",
-                    onCheckedChange = { /* Update state in ViewModel */ }
+                    onCheckedChange = viewModel::onRememberBrightnessChange
                 )
             }
             item {
                 SettingsSwitchItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Double tap to fast forward and rewind",
-                    initialCheckedState = true,
+                    checked = uiState.doubleTapToFastForwardAndRewind,
                     description = "On",
-                    onCheckedChange = { /* Update state in ViewModel */ }
+                    onCheckedChange = viewModel::onDoubleTapToFastForwardAndRewindChange
                 )
             }
             item {
                 SettingsSwitchItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Auto Play Next",
-                    initialCheckedState = true,
+                    checked = uiState.autoPlayNext,
                     description = "Automatically play next video when current video ends.",
-                    onCheckedChange = { /* Update state in ViewModel */ }
+                    onCheckedChange = viewModel::onAutoPlayNextChange
                 )
             }
             item {
                 SettingsSwitchItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Music",
-                    initialCheckedState = false,
+                    checked = uiState.showMusic,
                     description = "Show music",
-                    onCheckedChange = { /* Update state in ViewModel */ }
+                    onCheckedChange = viewModel::onShowMusicChange
                 )
             }
 
@@ -273,19 +251,13 @@ fun SettingsSwitchWithDescription(
     icon: ImageVector,
     title: String,
     description: String,
-    initialCheckedState: Boolean,
+    checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    // Local state for demonstration
-    var isChecked by remember { mutableStateOf(initialCheckedState) }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                isChecked = !isChecked
-                onCheckedChange(isChecked)
-            }
+            .clickable { onCheckedChange(!checked) }
             .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -315,11 +287,8 @@ fun SettingsSwitchWithDescription(
         }
         // Switch
         Switch(
-            checked = isChecked,
-            onCheckedChange = {
-                isChecked = it
-                onCheckedChange(it)
-            }
+            checked = checked,
+            onCheckedChange = onCheckedChange
         )
     }
 }
@@ -332,21 +301,14 @@ fun SettingsSwitchWithDescription(
 fun SettingsSwitchItem(
     icon: ImageVector,
     title: String,
-    initialCheckedState: Boolean,
+    checked: Boolean,
     description: String?,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    // Use remember and mutableStateOf to manage the switch state locally for demonstration
-    // In a real MVVM app, you would pass the current state from the ViewModel.
-    var isChecked by remember { mutableStateOf(initialCheckedState) }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                isChecked = !isChecked
-                onCheckedChange(isChecked)
-            }
+            .clickable { onCheckedChange(!checked) }
             .padding(vertical = 8.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -370,7 +332,7 @@ fun SettingsSwitchItem(
             )
             description?.let {
                 Text(
-                    text = if (isChecked) "On" else "Off", // Example of showing current state
+                    text = if (checked) "On" else "Off", // Example of showing current state
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -378,11 +340,8 @@ fun SettingsSwitchItem(
         }
         // Switch
         Switch(
-            checked = isChecked,
-            onCheckedChange = {
-                isChecked = it
-                onCheckedChange(it)
-            }
+            checked = checked,
+            onCheckedChange = onCheckedChange
         )
     }
 }

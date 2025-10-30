@@ -81,6 +81,8 @@ class VideoViewModel(private val videoRepository: VideoRepository) : ViewModel()
                             videos = currentState.videos.filter { it.uri != video.uri }
                         )
                     }
+                    loadAllVideos()
+                    loadVideosByFolder("")
                     // A successful delete usually triggers a success Toast in the Activity/Fragment.
                 } else {
                     _videoListState.update {

@@ -64,9 +64,13 @@ fun HomeActivityScreen(
     ) { paddingValues ->
         paddingValues
         val state by homeActivityViewModel.homeActivityState.collectAsState()
+
+        //playlist
         val playlistsViewModel: PlaylistsViewModel = koinViewModel()
         val videoToAddToPlaylist by playlistsViewModel.videoToAddToPlaylist.collectAsState()
         val playlists by playlistsViewModel.playlists.collectAsState()
+
+        val selectedPlaylist by playlistsViewModel.selectedPlaylist.collectAsState()
 
 
 
@@ -127,9 +131,30 @@ fun HomeActivityScreen(
                         }
 
                         NavItem.PLAYLISTS -> {
-
-                            AllPlaylistsScreen(){
-
+                            // --- THIS IS THE UPDATED LOGIC ---
+                            if (selectedPlaylist == null) {
+                                // If no playlist is selected, show the list of all playlists
+                                AllPlaylistsScreen(
+                                    playlistsViewModel = playlistsViewModel, // Pass the ViewModel down
+                                    onPlaylistClick = { playlist ->
+                                        // When a playlist is clicked, update the state
+                                        playlistsViewModel.onPlaylistSelected(playlist)
+                                    }
+                                )
+                            } else {
+                                // If a playlist IS selected, show its videos
+                                VideoListScreen(
+                                    videoList = selectedPlaylist!!.videos,
+                                    isLoading = false, // Data is already loaded
+                                    title = selectedPlaylist!!.name, // Use playlist name as title
+                                    onVideoClick = { video1 ->
+                                        homeActivityViewModel.onVideoSelected(video1)
+                                    },
+                                    onBackPressed = {
+                                        // On back press, clear the selected playlist
+                                        playlistsViewModel.onBackFromPlaylist()
+                                    }
+                                )
                             }
                         }
 
@@ -142,7 +167,7 @@ fun HomeActivityScreen(
                 }
 
 
-                BottomNavRow(viewModel = homeActivityViewModel, state)
+                BottomNavRow(viewModel = homeActivityViewModel, state,playlistsViewModel)
 
                 if (state.selectedVideo != null) {
                     ChooseVideoFunctionality(
@@ -179,7 +204,11 @@ fun HomeActivityScreen(
 
 
 @Composable
-fun BottomNavRow(viewModel: HomeActivityViewModel, state: HomeActivityState) {
+fun BottomNavRow(
+    viewModel: HomeActivityViewModel,
+    state: HomeActivityState,
+    playlistsViewModel: PlaylistsViewModel
+) {
     // Define the different states for each navigation item (label, unselected icon, selected icon)
     val navItems = listOf(
         Triple("Folders", R.drawable.folders_unselected, R.drawable.folder_video),
@@ -230,6 +259,8 @@ fun BottomNavRow(viewModel: HomeActivityViewModel, state: HomeActivityState) {
                     .clickable {
                         // When clicked, notify the ViewModel to update the state
                         viewModel.onNavigationItemSelected(currentNavItem)
+                        if(currentNavItem == NavItem.PLAYLISTS){
+                            playlistsViewModel.onPlaylistSelected(null)}
                     }
                     .padding(4.dp)
             ) {

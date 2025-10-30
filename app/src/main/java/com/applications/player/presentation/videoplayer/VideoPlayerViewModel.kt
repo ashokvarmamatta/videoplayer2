@@ -1,26 +1,32 @@
 package com.applications.player.presentation.videoplayer
 
+
 import android.app.Application
+import androidx.compose.animation.core.copy
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
-// FIX: ADD THIS SPECIFIC IMPORT TO RESOLVE 'Token' REFERENCE
 import androidx.media3.session.SessionToken
-import androidx.media3.session.legacy.MediaSessionCompat
+import com.applications.player.domain.SettingsRepository
 import com.applications.player.model.Video
+import com.applications.player.presentation.settings.SettingsScreenState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class VideoPlayerViewModel(application: Application) : AndroidViewModel(application) {
+class VideoPlayerViewModel(
+    application: Application,
+    private val settingsRepository: SettingsRepository // Inject repository
+) : AndroidViewModel(application) {
 
     private val _state = MutableStateFlow(VideoPlayerState())
     val state: StateFlow<VideoPlayerState> = _state
@@ -29,50 +35,57 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     private var mediaSession: MediaSession? = null
     private var updateJob: Job? = null
 
-    // This reference is now resolved by the import above
+    // To hold the current settings state
+    private var currentSettings = SettingsScreenState()
+
     val mediaSessionToken: SessionToken?
         get() = mediaSession?.token
+
+    init {
+        // Observe settings changes and update the local variable
+        viewModelScope.launch {
+            settingsRepository.getSettings().collect { settings ->
+                currentSettings = settings
+            }
+        }
+    }
 
     // --- Public API for UI Commands ---
 
     fun initPlayer(video: Video) {
         if (player == null) {
-            player = ExoPlayer.Builder(getApplication()).build().apply {
-                addListener(PlayerEventListener())
-                setMediaItem(MediaItem.fromUri(video.uri))
-                // You were missing PlaybackParameters in your original snippet, I'm adding a default here
-                // Note: I'm keeping the original code's preference for speed management if it exists
-                playbackParameters = PlaybackParameters(1.0f)
-                prepare()
-                playWhenReady = true
+            viewModelScope.launch {
+                // Fetch initial settings before creating the player
+                currentSettings = settingsRepository.getSettings().first()
+
+                player = ExoPlayer.Builder(getApplication()).build().apply {
+                    addListener(PlayerEventListener())
+                    setMediaItem(MediaItem.fromUri(video.uri))
+                    playbackParameters = PlaybackParameters(1.0f) // Default speed
+                    prepare()
+                    playWhenReady = true
+                }
+
+                mediaSession = MediaSession.Builder(getApplication(), player!!)
+                    .build()
+
+                startProgressUpdateJob()
             }
-
-            // Initialize MediaSession and connect to player
-            mediaSession = MediaSession.Builder(getApplication(), player!!)
-                .build()
-
-            startProgressUpdateJob()
         }
     }
 
     fun releasePlayer() {
         updateJob?.cancel()
-
-        // Release MediaSession before releasing the player
         mediaSession?.release()
-        mediaSession = null
-
         player?.release()
+        mediaSession = null
         player = null
         _state.value = VideoPlayerState()
     }
 
-    // Since you are an Android developer and use Kotlin/Coroutines,
-    // I am assuming the following helper methods exist and are correct:
     fun togglePlayPause(shouldPlay: Boolean? = null) {
         player?.let {
-            val targetPlayState = shouldPlay ?: !it.playWhenReady
-            it.playWhenReady = targetPlayState
+            it.playWhenReady = shouldPlay ?: !it.playWhenReady
         }
     }
 
@@ -81,6 +94,7 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun rewind(seconds: Int = 10) {
+        if (!currentSettings.doubleTapToFastForwardAndRewind) return
         player?.let {
             val newPosition = (it.currentPosition - seconds * 1000).coerceAtLeast(0L)
             it.seekTo(newPosition)
@@ -88,6 +102,7 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun fastForward(seconds: Int = 10) {
+        if (!currentSettings.doubleTapToFastForwardAndRewind) return
         player?.let {
             val duration = it.duration.coerceAtLeast(0L)
             val newPosition = (it.currentPosition + seconds * 1000).coerceAtMost(duration)
@@ -99,10 +114,11 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
         _state.update { it.copy(isSeeking = isSeeking) }
     }
 
-    fun setPlaybackSpeed(speed: Float) {
+    fun setPlaybackSpeed(speed: Float, isTemporary: Boolean = false) {
+        if (!currentSettings.longPressToPlayAt2xSpeed && isTemporary) return
+
         player?.let {
-            val params = PlaybackParameters(speed)
-            it.playbackParameters = params
+            it.playbackParameters = PlaybackParameters(speed)
             _state.update { currentState -> currentState.copy(playbackSpeed = speed) }
         }
     }
@@ -113,21 +129,19 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun startProgressUpdateJob() {
         updateJob?.cancel()
-
         updateJob = viewModelScope.launch {
             while (isActive) {
-                val p = player
-                if (p != null) {
+                player?.let { p ->
                     _state.update { currentState ->
                         currentState.copy(
                             currentPosition = p.currentPosition.coerceAtLeast(0L),
                             duration = p.duration.coerceAtLeast(0L),
-                            bufferedPosition = p.bufferedPosition,
-                            isPlaying = p.isPlaying // Also update isPlaying here from player state
+                            bufferedPosition = p.bufferedPosition.coerceAtLeast(0L),
+                            isPlaying = p.isPlaying
                         )
                     }
                 }
-                delay(100)
+                delay(250) // Reduced frequency for optimization
             }
         }
     }
@@ -138,12 +152,11 @@ class VideoPlayerViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED && currentSettings.autoPlayNext) {
+                // TODO: Implement logic to play the next video in the playlist
+            }
             if (playbackState == Player.STATE_READY) {
-                _state.update { it.copy(duration = player?.duration ?: 0L) }
-                // Reapply playback parameters in case it was reset by ExoPlayer
-                player?.let {
-                    it.playbackParameters = PlaybackParameters(_state.value.playbackSpeed)
-                }
+                _state.update { it.copy(duration = player?.duration?.coerceAtLeast(0L) ?: 0L) }
             }
         }
     }

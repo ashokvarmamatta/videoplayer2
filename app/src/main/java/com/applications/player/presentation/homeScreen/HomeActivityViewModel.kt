@@ -73,6 +73,8 @@ class HomeActivityViewModel(private  val videoRepository: VideoRepository, priva
                     _homeActivityModel.update {
                         it.copy(success = "Video deleted successfully")
                     }
+                    loadAllVideos()
+                    loadFolders()
                     // A successful delete usually triggers a success Toast in the Activity/Fragment.
                 } else {
                     _homeActivityModel.update {

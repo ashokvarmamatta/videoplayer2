@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
@@ -31,8 +32,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.applications.player.model.Video
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -71,7 +76,7 @@ paddingValues
 }
 
 @Composable
-fun PlaylistCard(
+fun PlaylistCard1(
     playlist: PlaylistEntity,
     onClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -122,6 +127,189 @@ fun PlaylistCard(
                     contentDescription = "Delete Playlist",
                     tint = MaterialTheme.colorScheme.error
                 )
+            }
+        }
+    }
+}
+
+
+// Add these imports to the top of your file
+// ... existing code for AllPlaylistsScreen ...
+// Replace the existing PlaylistCard with this new version
+@Composable
+fun PlaylistCard(
+    playlist: PlaylistEntity,
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // --- THIS IS THE REPLACEMENT ---
+            // The static Icon is replaced with our new dynamic PlaylistThumbnail
+
+            PlaylistThumbnail(
+                videos = playlist.videos,
+                modifier = Modifier.size(48.dp)
+            )
+            // -----------------------------
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = playlist.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${playlist.videos.size} videos",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(onClick = onDeleteClick) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Playlist",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+// --- NEW COMPOSABLE FOR THE THUMBNAIL GRID ---
+@Composable
+fun PlaylistThumbnail(
+    videos: List<Video>,
+    modifier: Modifier = Modifier
+) {
+    // Determine the number of videos to show, taking the first 4 at most.
+    val relevantVideos = videos.take(4)
+
+    // Use a Box to draw the default icon as a background,
+    // and overlay the thumbnails on top.
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp)) // Clip the container to have rounded corners
+    ) {
+        // Default Icon, shown if there are no videos or as a fallback
+        Icon(
+            imageVector = Icons.Default.DateRange,
+            contentDescription = "Playlist Icon",
+            modifier = Modifier.fillMaxSize(),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) // Make it slightly transparent
+        )
+
+        // Logic to display thumbnails based on video count
+        when (relevantVideos.size) {
+            0 -> {
+                // No videos, the default icon is already visible. Nothing more to do.
+            }
+
+            1 -> {
+                // One video: show a single thumbnail that fills the container
+                AsyncImage(
+                    model = relevantVideos[0].uri,
+                    contentDescription = "Playlist Thumbnail",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop // Crop to fill the space
+                )
+            }
+
+            2 -> {
+                // Two videos: show two halves, side-by-side
+                Row(Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = relevantVideos[0].uri,
+                        contentDescription = "Thumbnail 1",
+                        modifier = Modifier.weight(1f),
+                        contentScale = ContentScale.Crop
+                    )
+                    AsyncImage(
+                        model = relevantVideos[1].uri,
+                        contentDescription = "Thumbnail 2",
+                        modifier = Modifier.weight(1f),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+
+            3 -> {
+                // Three videos: one on the left, two stacked on the right
+                Row(Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = relevantVideos[0].uri,
+                        contentDescription = "Thumbnail 1",
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    Column(Modifier.weight(1f)) {
+                        AsyncImage(
+                            model = relevantVideos[1].uri,
+                            contentDescription = "Thumbnail 2",
+                            modifier = Modifier.weight(1f),
+                            contentScale = ContentScale.Crop
+                        )
+                        AsyncImage(
+                            model = relevantVideos[2].uri,
+                            contentDescription = "Thumbnail 3",
+                            modifier = Modifier.weight(1f),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+
+            else -> { // 4 or more videos
+                // Four videos: show a 2x2 grid
+                Column(Modifier.fillMaxSize()) {
+                    Row(Modifier.weight(1f)) {
+                        AsyncImage(
+                            model = relevantVideos[0].uri,
+                            contentDescription = "Thumbnail 1",
+                            modifier = Modifier.weight(1f),
+                            contentScale = ContentScale.Crop
+                        )
+                        AsyncImage(
+                            model = relevantVideos[1].uri,
+                            contentDescription = "Thumbnail 2",
+                            modifier = Modifier.weight(1f),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    Row(Modifier.weight(1f)) {
+                        AsyncImage(
+                            model = relevantVideos[2].uri,
+                            contentDescription = "Thumbnail 3",
+                            modifier = Modifier.weight(1f),
+                            contentScale = ContentScale.Crop
+                        )
+                        AsyncImage(
+                            model = relevantVideos[3].uri,
+                            contentDescription = "Thumbnail 4",
+                            modifier = Modifier.weight(1f),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
             }
         }
     }

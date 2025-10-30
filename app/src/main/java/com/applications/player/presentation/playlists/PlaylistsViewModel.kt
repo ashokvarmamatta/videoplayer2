@@ -49,7 +49,7 @@ class PlaylistsViewModel(
     /**
      * Called when a user selects a playlist from the list.
      */
-    fun onPlaylistSelected(playlist: PlaylistEntity) {
+    fun onPlaylistSelected(playlist: PlaylistEntity?) {
         _selectedPlaylist.value = playlist
     }
 

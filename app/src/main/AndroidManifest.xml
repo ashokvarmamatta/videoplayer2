@@ -25,13 +25,19 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VideoPlayer">
         <activity
-            android:name=".presentation.homeScreen.HomeActivity"
+            android:name=".presentation.basic.SplashActivity"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".presentation.homeScreen.HomeActivity"
+            android:exported="true">
+
         </activity>
         <activity
             android:name=".presentation.videocrop.VideoCropActivity"
@@ -41,7 +47,7 @@
             android:exported="false" />
         <activity
             android:name=".presentation.videosOfFolder.AllVideosActivity"
-            android:exported="true"></activity>
+            android:exported="true" />
         <activity
             android:name=".presentation.TorrentStreamer.VideoStreamActivity"
             android:exported="false" />
@@ -55,9 +61,7 @@
             android:exported="false" />
         <activity
             android:name=".presentation.videosbyfolders.VideosByFoldersActivity"
-            android:exported="true">
-
-        </activity>
+            android:exported="true"></activity>
         <activity
             android:name=".MainActivity"
             android:exported="true"

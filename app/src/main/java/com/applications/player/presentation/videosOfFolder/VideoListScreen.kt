@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
@@ -24,7 +26,8 @@ fun VideoListScreen(
     videoList: List<Video>,
     isLoading: Boolean,
     title: String,
-    onVideoClick: (Video) -> Unit
+    onVideoClick: (Video) -> Unit,
+    onBackPressed: (() -> Unit)? = null
 ) {
     Scaffold(
 
@@ -91,7 +94,7 @@ fun VideoCard(video: Video, onClick: () -> Unit) {
             AsyncImage(
                 model = video.thumbnailUri,
                 contentDescription = "Thumbnail for ${video.name}",
-                modifier = Modifier.size(60.dp),
+                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(5)),
                 contentScale = ContentScale.Crop
                 // Ensure you have added the Coil dependencies: 'coil-compose' and 'coil-video'
             )
