@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
@@ -79,14 +80,14 @@ fun VideoCard(video: Video, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 8.dp)
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Log.e("", "video url : ${video.thumbnailUri}")
@@ -94,7 +95,7 @@ fun VideoCard(video: Video, onClick: () -> Unit) {
             AsyncImage(
                 model = video.thumbnailUri,
                 contentDescription = "Thumbnail for ${video.name}",
-                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(5)),
+                modifier = Modifier.size(width = 100.dp, height = 60.dp).clip(RoundedCornerShape(5)),
                 contentScale = ContentScale.Crop
                 // Ensure you have added the Coil dependencies: 'coil-compose' and 'coil-video'
             )
@@ -107,7 +108,7 @@ fun VideoCard(video: Video, onClick: () -> Unit) {
                 Text(
                     text = video.name,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -118,12 +119,12 @@ fun VideoCard(video: Video, onClick: () -> Unit) {
                         // video.size is a Long
                         text = "Size: ${formatSize(video.size)}",
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f), color = Color(0xFFC4BABA)
                     )
                     Text(
                         // video.duration is passed as a Long
                         text = "Duration: ${formatDuration(video.duration)}",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(end = 10.dp), color = Color(0xFFC4BABA)
                     )
                 }
             }

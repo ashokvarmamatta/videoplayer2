@@ -17,9 +17,22 @@ import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,16 +41,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.media3.common.util.UnstableApi
+import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import com.applications.player.R
 import com.applications.player.databinding.ActivityAllVideosBinding
 import com.applications.player.model.Video
-import com.applications.player.presentation.VideoPlayerActivity
 
-import com.applications.player.presentation.videocrop.VideoCropActivity
 import com.applications.player.presentation.videosplitting.VideoSplittingActivity
 import com.applications.player.ui.theme.VideoPlayerTheme
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -145,6 +165,10 @@ class AllVideosActivity : AppCompatActivity() {
                 val videoToAddToPlaylist by playlistsViewModel.videoToAddToPlaylist.collectAsState()
                 val playlists by playlistsViewModel.playlists.collectAsState()
 
+                // --- NEW: State to manage the rename dialog ---
+                var videoToRename by remember { mutableStateOf<Video?>(null) }
+
+
                 // Set the screen title dynamically
                 val folderPath = intent.getStringExtra("FILTER_FOLDER_PATH")
                 val screenTitle = if (folderPath != null) {
@@ -188,12 +212,17 @@ class AllVideosActivity : AppCompatActivity() {
                             intent.putExtra("videoUri", video.uri)
                             startActivity(intent)
                         },
-                        onCropClick = { video ->
+                        // --- NEW: Connect onRenameClicked ---
+                        onRenameCLicked = { video ->
+                            selectedVideo = null // Dismiss the selection dialog
+                            videoToRename = video // Show the rename dialog
+                        },
+                       /* onCropClick = { video ->
                             selectedVideo = null
                             val intent = Intent(this@AllVideosActivity, VideoCropActivity::class.java)
                             intent.putExtra("videoUri", video.uri)
                             startActivity(intent)
-                        },
+                        },*/
                         onMergeClick = { video ->
                             selectedVideo = null
                             val intent = Intent(this@AllVideosActivity, VideoMergingActivity::class.java)
@@ -230,6 +259,21 @@ class AllVideosActivity : AppCompatActivity() {
                   )
               }
 
+                // --- NEW: Show Rename Dialog when videoToRename is not null ---
+                if (videoToRename != null) {
+                    RenameVideoDialog(
+                        video = videoToRename!!,
+                        onDismiss = { videoToRename = null },
+                        onRename = { video, newName ->
+                            // Call the ViewModel to perform the rename operation
+                            val currentFolder = intent.getStringExtra("FILTER_FOLDER_PATH")
+                            videoViewModel.renameVideo(video, newName, currentFolder)
+                            videoToRename = null // Dismiss the dialog
+                            Toast.makeText(this, "Renaming video...", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+
             }
         }
     }
@@ -253,38 +297,140 @@ class AllVideosActivity : AppCompatActivity() {
 }
 
 
+
 @Composable
 fun SelectionDialog(
     video: Video,
     onDismiss: () -> Unit,
     onPlayClick: (Video) -> Unit,
     onAddToPlayListChecked:(Video) -> Unit,
+    onRenameCLicked:(Video) -> Unit,
     onSplitClick: (Video) -> Unit,
-    onCropClick: (Video) -> Unit,
     onMergeClick: (Video) -> Unit,
-    onDeleteClick: (Video) -> Unit // --- NEW: Delete Callback ---
+    onDeleteClick: (Video) -> Unit
 ) {
+    // Use AlertDialog for the dialog-style UI
     AlertDialog(
         onDismissRequest = onDismiss,
+        // The title composable now contains the thumbnail and video name
         title = {
-            Text("Choose an action for ${video.name.take(15)}")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(model = video.thumbnailUri),
+                    contentDescription = "Video Thumbnail",
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = video.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         },
+        // The text composable contains the list of actions
         text = {
-            Text("What would you like to do with this video?")
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Spacer(modifier = Modifier.height(16.dp)) // Add space between title and options
+                OptionRow(iconResId = R.drawable.vid_play, text = "Play") { onPlayClick(video) }
+                OptionRow(iconResId = R.drawable.playlist_a, text = "Add to Playlist") { onAddToPlayListChecked(video) }
+                OptionRow(iconResId = R.drawable.rename, text = "Rename") { onRenameCLicked(video) }
+                OptionRow(iconResId = R.drawable.del, text = "Delete") { onDeleteClick(video) }
+
+                // Hidden options
+                // OptionRow(iconResId = R.drawable.split, text = "Split") { onSplitClick(video) }
+                // OptionRow(iconResId = R.drawable.merge, text = "Merge") { onMergeClick(video) }
+            }
+        },
+        // We handle clicks in each row, so the confirm button is not needed.
+        confirmButton = {
+            // You can add a "Close" button here if you want
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+// Helper composable updated to use drawable resource IDs
+@Composable
+private fun OptionRow(
+    iconResId: Int, // Changed parameter name for clarity
+    text: String,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp)
+    ) {
+        Image(
+            painter = painterResource(id = iconResId),
+            contentDescription = text,
+            modifier = Modifier.size(24.dp),
+            // Optional: Tint the drawable icon to match your app's theme
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(text = text, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+
+/**
+ * **[NEW]** A dialog Composable for renaming a video.
+ */
+@Composable
+fun RenameVideoDialog(
+    video: Video,
+    onDismiss: () -> Unit,
+    onRename: (Video, String) -> Unit
+) {
+    var newName by remember { mutableStateOf(video.name) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename Video") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("New name") },
+                    singleLine = true,
+                    isError = error != null
+                )
+                if (error != null) {
+                    Text(text = error!!, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                }
+            }
         },
         confirmButton = {
-            Column(
-                modifier = Modifier.fillMaxWidth()
+            TextButton(
+                onClick = {
+                    val finalName = if (!newName.contains('.')) "$newName.mp4" else newName
+                    if (finalName.isNotBlank() && !finalName.contains(File.separatorChar)) {
+                        onRename(video, finalName)
+                    } else {
+                        error = "Name cannot be empty or contain '/'."
+                    }
+                }
             ) {
-                TextButton(onClick = { onPlayClick(video) }) { Text("Play") }
-                TextButton(onClick = { onAddToPlayListChecked(video) }) { Text("Add to PlayList") }
-                TextButton(onClick = { onSplitClick(video) }) { Text("Split") }
-//                TextButton(onClick = { onCropClick(video) }) { Text("Crop") }
-                TextButton(onClick = { onMergeClick(video) }) { Text("Merge/Delete Gap") }
-
-
-                // --- NEW: Delete Button Added ---
-                TextButton(onClick = { onDeleteClick(video) }) { Text("Delete Video") }
+                Text("Rename")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
     )

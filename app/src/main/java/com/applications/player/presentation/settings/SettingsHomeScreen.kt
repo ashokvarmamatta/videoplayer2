@@ -44,10 +44,11 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
 
     Scaffold(
     ) { paddingValues ->
+        paddingValues
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+
 
         ) {
             // Navigation Items (Title + Description + Arrow)
@@ -83,14 +84,14 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
                     onClick = { /* Navigate to decoder settings */ }
                 )
             }
-            item {
+            /*item {
                 SettingsNavigationItem(
                     icon = Icons.Default.Settings, // Placeholder
                     title = "Gesture Control",
                     description = null,
-                    onClick = { /* Navigate to gesture settings */ }
+                    onClick = { *//* Navigate to gesture settings *//* }
                 )
-            }
+            }*/
             item {
                 // The screenshot has a slight visual break here, let's add a divider
                 Divider(modifier = Modifier.padding(horizontal = 16.dp))

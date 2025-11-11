@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Divider
@@ -34,6 +35,7 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
@@ -99,7 +101,7 @@ fun VideosByFoldersScreen(
 
                 items(folders, key = { it.path }) { folder ->
                     FolderCard(folder = folder, onClick = { onFolderClick(folder) })
-                    Divider()
+                    //Divider()
                 }
             }
 
@@ -182,7 +184,7 @@ fun FolderCard(folder: Folder, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 8.dp),
+            .padding(vertical = 8.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Log.e(
@@ -196,7 +198,7 @@ fun FolderCard(folder: Folder, onClick: () -> Unit) {
                 .crossfade(true)
                 .build(),
             contentDescription = "Thumbnail for your video",
-            modifier = Modifier.size(60.dp),
+            modifier = Modifier.size(width = 100.dp, height = 60.dp).clip(RoundedCornerShape(8.dp)),
             contentScale = ContentScale.Crop
         )
 

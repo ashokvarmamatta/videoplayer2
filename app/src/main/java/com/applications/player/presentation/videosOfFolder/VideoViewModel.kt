@@ -43,6 +43,43 @@ class VideoViewModel(private val videoRepository: VideoRepository) : ViewModel()
     }
 
     /**
+     * **[NEW]** Executes the video rename operation.
+     * This will call the repository and refresh the video list on success.
+     *
+     * @param video The video to rename.
+     * @param newName The new name for the video file.
+     * @param currentFolderPath The folder path to reload after renaming, or null to reload all videos.
+     */
+    fun renameVideo(video: Video, newName: String, currentFolderPath: String?) {
+        viewModelScope.launch {
+            _videoListState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val updatedVideo = videoRepository.renameVideo(video, newName)
+                if (updatedVideo != null) {
+                    _videoListState.update {
+                        // Clear any previous error and signal success via a non-state mechanism if needed (like a Toast)
+                        it.copy(isLoading = false, error = null)
+                    }
+                    // Refresh the list to show the change
+                    if (currentFolderPath != null) {
+                        loadVideosByFolder(currentFolderPath)
+                    } else {
+                        loadAllVideos()
+                    }
+                } else {
+                    _videoListState.update {
+                        it.copy(error = "Failed to rename video.", isLoading = false)
+                    }
+                }
+            } catch (e: Exception) {
+                _videoListState.update {
+                    it.copy(error = "An error occurred: ${e.message}", isLoading = false)
+                }
+            }
+        }
+    }
+
+    /**
      * **[NEW]** Loads videos filtered by a specific folder path.
      * This resolves the "Unresolved reference 'loadVideosByFolder'".
      */

@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,7 +68,7 @@ paddingValues
                             onClick = { onPlaylistClick(playlist) },
                             onDeleteClick = { playlistsViewModel.deletePlaylist(playlist) }
                         )
-                        Divider()
+                        //Divider()
                     }
                 }
             }
@@ -146,21 +147,22 @@ fun PlaylistCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(horizontal = 8.dp, vertical = 0.dp), colors = CardDefaults.cardColors(Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
-        ) {
+        )
+        {
             // --- THIS IS THE REPLACEMENT ---
             // The static Icon is replaced with our new dynamic PlaylistThumbnail
 
             PlaylistThumbnail(
                 videos = playlist.videos,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(width = 100.dp, height = 60.dp)
             )
             // -----------------------------
 

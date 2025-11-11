@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.VideoPlayer" parent="Theme.Material3Expressive.DayNight.NoActionBar" />
+    <style name="Theme.VideoPlayer" parent="Theme.Material3Expressive.DayNight.NoActionBar">
+        <item name="fontFamily">@font/readx_pro_regular</item>
+    </style>
 </resources>

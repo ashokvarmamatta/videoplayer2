@@ -2,6 +2,7 @@ package com.applications.player.presentation.homeScreen
 
 import android.Manifest.permission
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -9,10 +10,14 @@ import android.os.Environment
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback // Import OnBackPressedCallback
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultCallback
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog // Import AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
@@ -30,6 +35,7 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 import kotlin.getValue
 
 class HomeActivity : AppCompatActivity() {
+    private lateinit var permChecker: ActivityResultLauncher<Array<String>>
     val binding: ActivityHomeBinding by lazy {
         ActivityHomeBinding.inflate(layoutInflater)
     }
@@ -37,16 +43,15 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT))
         setContentView(binding.root)
-        /* ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-             insets
-         }*/
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
+            insets
+        }
 
-
-        val permChecker = registerForActivityResult<Array<String>, Map<String, Boolean>>(
+        permChecker = registerForActivityResult<Array<String>, Map<String, Boolean>>(
             ActivityResultContracts.RequestMultiplePermissions(),
             ActivityResultCallback { result ->
                 for (s in result.keys) {
@@ -60,7 +65,7 @@ class HomeActivity : AppCompatActivity() {
                         return@ActivityResultCallback
                     }
 
-                    setContent {
+                    binding.composeView.setContent {
                         VideoPlayerTheme() {
                             HomeActivityScreen()
                         }
@@ -70,9 +75,39 @@ class HomeActivity : AppCompatActivity() {
             })
 
 
+        // --- BACK PRESS HANDLING LOGIC ---
+        val onBackPressedCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // When back is pressed, show the exit dialog
+                showExitConfirmationDialog()
+            }
+        }
+        onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
+        // --- END OF BACK PRESS HANDLING LOGIC ---
+
+
+    }
+
+    // --- NEW FUNCTION TO SHOW THE DIALOG ---
+    private fun showExitConfirmationDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Exit App")
+            .setMessage("Are you sure you want to exit?")
+            .setPositiveButton("Yes") { _, _ ->
+                // If "Yes" is clicked, finish the activity and close the app
+                finish()
+            }
+            .setNegativeButton("No", null) // If "No" is clicked, do nothing
+            .show()
+    }
+
+
+    override fun onResume() {
+        super.onResume()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (Environment.isExternalStorageManager()) {
-                setContent {
+
+                binding.composeView.setContent {
                     VideoPlayerTheme() {
                         HomeActivityScreen()
                     }
@@ -106,14 +141,5 @@ class HomeActivity : AppCompatActivity() {
                 )
             }
         }
-
-
-        binding.composeView.setContent {
-            VideoPlayerTheme() {
-                HomeActivityScreen()
-            }
-
-        }
-
     }
 }

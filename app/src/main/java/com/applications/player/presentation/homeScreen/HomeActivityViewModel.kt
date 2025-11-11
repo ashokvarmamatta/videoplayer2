@@ -39,7 +39,44 @@ class HomeActivityViewModel(private  val videoRepository: VideoRepository, priva
         }
     }
 
+    fun onVideoRenameSelected(video: Video?) {
+        // This function will be used to show the rename dialog
+        _homeActivityModel.update { currentState ->
+            currentState.copy(videoToRename = video)
+        }
+    }
 
+
+    /**
+     * **[NEW]** Executes the video rename operation.
+     * @param video The video to rename.
+     * @param newName The desired new name for the video.
+     */
+    fun renameVideo(video: Video, newName: String) {
+        viewModelScope.launch {
+            _homeActivityModel.update { it.copy(isAllLoading = true, error = null) }
+            try {
+                val updatedVideo = videoRepository.renameVideo(video, newName)
+                if (updatedVideo != null) {
+                    _homeActivityModel.update {
+                        it.copy(success = "Video renamed successfully", videoToRename = null)
+                    }
+                    // Refresh data to reflect the change everywhere
+                    loadAllVideos()
+                    loadFolders()
+                } else {
+                    _homeActivityModel.update {
+                        it.copy(error = "Failed to rename video.", isAllLoading = false)
+                    }
+                }
+            } catch (e: Exception) {
+                _homeActivityModel.update {
+                    it.copy(error = "Failed to rename video: ${e.message}", isAllLoading = false)
+                }
+                e.printStackTrace()
+            }
+        }
+    }
 
     fun loadVideosOfFolder(folderPath: String) {
         viewModelScope.launch {

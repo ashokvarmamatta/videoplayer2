@@ -1,11 +1,12 @@
 package com.applications.player.presentation.videoplayer
 
-
 import android.app.Application
-import androidx.compose.animation.core.copy
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -18,7 +19,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -42,11 +45,26 @@ class VideoPlayerViewModel(
         get() = mediaSession?.token
 
     init {
-        // Observe settings changes and update the local variable
+        // --- CONSOLIDATED SETTINGS OBSERVER ---
         viewModelScope.launch {
-            settingsRepository.getSettings().collect { settings ->
-                currentSettings = settings
-            }
+            settingsRepository.getSettings()
+                .distinctUntilChanged() // Only react when the settings object actually changes
+                .collect { newSettings ->
+                    // 1. Update the cached settings state
+                    val oldSettings = currentSettings
+                    currentSettings = newSettings
+
+                    // 2. React to specific setting changes
+
+                    // Handle Music/Volume change
+                    if (oldSettings.showMusic != newSettings.showMusic) {
+                        player?.volume = if (newSettings.showMusic) 1.0f else 0.0f
+                    }
+
+                    // Other settings can be handled here as needed...
+                    // For example, if a setting affected playback speed default:
+                    // if (oldSettings.defaultSpeed != newSettings.defaultSpeed) { ... }
+                }
         }
     }
 
@@ -62,10 +80,12 @@ class VideoPlayerViewModel(
                     addListener(PlayerEventListener())
                     setMediaItem(MediaItem.fromUri(video.uri))
                     playbackParameters = PlaybackParameters(1.0f) // Default speed
+                    // Set initial volume based on the fetched settings
+                    volume = if (currentSettings.showMusic) 1.0f else 0.0f
+
                     prepare()
                     playWhenReady = true
                 }
-
                 mediaSession = MediaSession.Builder(getApplication(), player!!)
                     .build()
 
@@ -85,7 +105,13 @@ class VideoPlayerViewModel(
 
     fun togglePlayPause(shouldPlay: Boolean? = null) {
         player?.let {
-            it.playWhenReady = shouldPlay ?: !it.playWhenReady
+            // If the video has ended, restart it from the beginning
+            if (it.playbackState == Player.STATE_ENDED) {
+                it.seekTo(0)
+                it.playWhenReady = true
+            } else {
+                it.playWhenReady = shouldPlay ?: !it.playWhenReady
+            }
         }
     }
 
@@ -107,6 +133,33 @@ class VideoPlayerViewModel(
             val duration = it.duration.coerceAtLeast(0L)
             val newPosition = (it.currentPosition + seconds * 1000).coerceAtMost(duration)
             it.seekTo(newPosition)
+        }
+    }
+
+    fun addSubtitle(subtitleUri: Uri) {
+        player?.let { p ->
+            val currentMediaItem = p.currentMediaItem ?: return
+            val currentPosition = p.currentPosition
+
+            // Determine the MIME type from the file extension
+            val mimeType = if (subtitleUri.path?.endsWith(".vtt", ignoreCase = true) == true) {
+                MimeTypes.TEXT_VTT
+            } else {
+                MimeTypes.APPLICATION_SUBRIP // Default to SRT
+            }
+
+            val subtitle = MediaItem.SubtitleConfiguration.Builder(subtitleUri)
+                .setMimeType(mimeType)
+                .setLanguage("en") // Optional
+                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                .build()
+
+            val newMediaItem = currentMediaItem.buildUpon()
+                .setSubtitleConfigurations(listOf(subtitle))
+                .build()
+
+            p.setMediaItem(newMediaItem, currentPosition)
+            p.prepare()
         }
     }
 
@@ -152,8 +205,15 @@ class VideoPlayerViewModel(
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
-            if (playbackState == Player.STATE_ENDED && currentSettings.autoPlayNext) {
-                // TODO: Implement logic to play the next video in the playlist
+            if (playbackState == Player.STATE_ENDED) {
+                // If auto-play next is enabled, handle that logic
+                if (currentSettings.autoPlayNext) {
+                    // TODO: Implement logic to play the next video in the playlist
+                } else {
+                    // Otherwise, reset the current video to the start and pause it
+                    player?.seekTo(0)
+                    player?.playWhenReady = false
+                }
             }
             if (playbackState == Player.STATE_READY) {
                 _state.update { it.copy(duration = player?.duration?.coerceAtLeast(0L) ?: 0L) }

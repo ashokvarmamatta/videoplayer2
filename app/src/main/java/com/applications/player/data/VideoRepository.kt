@@ -1,6 +1,7 @@
 package com.applications.player.data
 
 import android.content.ContentResolver
+import android.content.ContentValues
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -169,6 +170,68 @@ class VideoRepository(private val context: Context) {
             }
         }
         return duration
+    }
+
+
+    /**
+     * **[NEW]** Renames a video file on the file system and updates its
+     * entry in the MediaStore.
+     * This operation is non-blocking and runs on Dispatchers.IO.
+     *
+     * @param video The video to rename.
+     * @param newName The new file name (including extension).
+     * @return The updated Video object if successful, null otherwise.
+     */
+    suspend fun renameVideo(video: Video, newName: String): Video? = withContext(Dispatchers.IO) {
+        val file = File(video.folderPath, video.name)
+        val newFile = File(video.folderPath, newName)
+
+        if (!file.exists()) {
+            Log.e("VideoRepository", "Rename failed: Source file not found at ${file.absolutePath}")
+            return@withContext null
+        }
+
+        if (newFile.exists()) {
+            Log.e("VideoRepository", "Rename failed: A file with the new name already exists.")
+            return@withContext null
+        }
+
+        // 1. Rename the file on the file system
+        if (file.renameTo(newFile)) {
+            try {
+                // 2. Update the MediaStore
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Video.Media.DISPLAY_NAME, newName)
+                    put(MediaStore.Video.Media.DATA, newFile.absolutePath)
+                }
+
+                val rowsUpdated = context.contentResolver.update(
+                    video.uri,
+                    contentValues,
+                    null,
+                    null
+                )
+
+                if (rowsUpdated > 0) {
+                    Log.e("VideoRepository", "Successfully renamed '${video.name}' to '$newName'")
+                    // 3. Return the updated video object
+                    return@withContext video.copy(name = newName, uri = video.uri)
+                } else {
+                    // If MediaStore update fails, try to revert the file name
+                    newFile.renameTo(file)
+                    Log.e("VideoRepository", "MediaStore update failed for ${video.uri}. Reverted file rename.")
+                    return@withContext null
+                }
+            } catch (e: Exception) {
+                // Catch any exceptions during MediaStore update and revert
+                newFile.renameTo(file)
+                Log.e("VideoRepository", "Exception during MediaStore update. Reverted file rename.", e)
+                return@withContext null
+            }
+        } else {
+            Log.e("VideoRepository", "File system rename failed for '${file.absolutePath}'")
+            return@withContext null
+        }
     }
 
     // --------------------------------------------------------------------------

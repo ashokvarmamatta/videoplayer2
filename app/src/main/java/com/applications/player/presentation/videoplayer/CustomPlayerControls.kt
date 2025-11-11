@@ -30,7 +30,9 @@ fun CustomPlayerControls(
     onToggleLock: () -> Unit,
     isScreenLocked: Boolean,
     onEnterPipMode: () -> Unit,
-    onUserInteract: (Boolean) -> Unit
+    onSelectSubtitle: () -> Unit,
+    onUserInteract: (Boolean) -> Unit,
+    onOptionsClicked:() -> Unit
 ) {
     var tempSliderValue by remember { mutableStateOf(state.currentPosition.toFloat()) }
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -122,13 +124,7 @@ fun CustomPlayerControls(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            /* item { PlayerControlButton(if (isScreenLocked) Icons.Default.LockOpen else Icons.Default.Lock, "Lock", onToggleLock) }
-             item { PlayerControlButton(if (isFullScreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen, if (isFullScreen) "Exit" else "Fullscreen", onToggleFullscreen) }
-             item { PlayerControlButton(Icons.Default.Speed, "${String.format("%.2f", state.playbackSpeed)}x") { showSpeedDialog = true } }
-             item { PlayerControlButton(Icons.Default.PictureInPicture, "PiP", onEnterPipMode) }
-             item { PlayerControlButton(Icons.Default.Subtitles, "Subtitles") { *//* TODO *//* } }
-            item { PlayerControlButton(Icons.Default.Settings, "Options") { *//* TODO *//* } }
-*/
+
                     item { PlayerControlButton(
                         icon = if (isScreenLocked) painterResource(R.drawable.lock_open) else painterResource(R.drawable.lock),
                         text = if (isScreenLocked) "Unlock" else "Lock",
@@ -152,12 +148,12 @@ fun CustomPlayerControls(
             item { PlayerControlButton(
                 icon = painterResource(R.drawable.subtitles_), // Placeholder for a custom Subtitles icon
                 text = "Subtitles",
-                onClick = { /* TODO */ }
+                onClick = { onSelectSubtitle.invoke() }
             ) }
             item { PlayerControlButton(
                 icon = painterResource(R.drawable.settings1), // Placeholder for a custom Settings icon
                 text = "Options",
-                onClick = { /* TODO */ }
+                onClick = {  onOptionsClicked.invoke()  }
             ) }
         }
     }

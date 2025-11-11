@@ -3,19 +3,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
-    android:background="@drawable/splsh_bg"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".presentation.basic.SplashActivity">
+    tools:context=".presentation.videoplayer.ComposeVideoPlayerActivity">
 
-    <ImageView
+    <androidx.compose.ui.platform.ComposeView
         android:layout_width="match_parent"
-        android:layout_height="220dp"
-        android:src="@drawable/vp_splash"
-        android:visibility="visible"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_height="match_parent"
+        android:id="@+id/compose"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

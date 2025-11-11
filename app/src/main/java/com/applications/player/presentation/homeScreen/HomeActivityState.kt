@@ -24,7 +24,10 @@ data class HomeActivityState(
     val folders: List<Folder> = emptyList(),
     var isLoadingFolders: Boolean = false,
 
-    )
+    val videoToRename: Video? = null, // <-- ADD THIS
+
+
+)
 
 
 // An enum to make the item selection type-safe and clear

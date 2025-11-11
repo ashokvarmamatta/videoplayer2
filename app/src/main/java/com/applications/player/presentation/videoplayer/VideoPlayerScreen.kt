@@ -2,8 +2,12 @@ package com.applications.player.presentation.videoplayer
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -35,6 +39,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.ui.PlayerView
 import com.applications.player.model.Video
 import com.applications.player.presentation.settings.SettingsViewModel
+import com.applications.player.presentation.videosOfFolder.SelectionDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -58,26 +63,19 @@ fun VideoPlayerScreen(
     var userInteractedWithControls by remember { mutableStateOf(false) }
     var isScreenLocked by remember { mutableStateOf(false) }
     var isFullScreen by remember { mutableStateOf(false) }
+
+    // You need the coroutine scope to launch the long-press job
     val coroutineScope = rememberCoroutineScope()
-    val interactionSource = remember { MutableInteractionSource() }
+
+    // --- 1. ADD STATE FOR DIALOG VISIBILITY ---
+    var showOptionsDialog by remember { mutableStateOf(false) }
+
 
     SystemUiAndOrientationManager(isFullScreen = isFullScreen, orientation = settings.defaultScreenOrientation)
 
     DisposableEffect(video) {
         viewModel.initPlayer(video)
         onDispose { viewModel.releasePlayer() }
-    }
-
-    LaunchedEffect(interactionSource, settings.longPressToPlayAt2xSpeed) {
-        if (!settings.longPressToPlayAt2xSpeed) return@LaunchedEffect
-
-        interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is PressInteraction.Press -> viewModel.setPlaybackSpeed(2.0f, isTemporary = true)
-                is PressInteraction.Release -> viewModel.setPlaybackSpeed(1.0f) // Revert to normal speed
-                is PressInteraction.Cancel -> viewModel.setPlaybackSpeed(1.0f)
-            }
-        }
     }
 
     LaunchedEffect(showControls, state.isPlaying, userInteractedWithControls, isScreenLocked, state.isInPipMode) {
@@ -87,11 +85,21 @@ fun VideoPlayerScreen(
         }
     }
 
+
+    val subtitleLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri: Uri? ->
+            uri?.let {
+                viewModel.addSubtitle(it)
+                Toast.makeText(context, "Subtitle added", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(settings.doubleTapToFastForwardAndRewind) {
+            .pointerInput(settings.doubleTapToFastForwardAndRewind, settings.longPressToPlayAt2xSpeed, isScreenLocked) {
                 detectTapGestures(
                     onTap = { if (!isScreenLocked) showControls = !showControls },
                     onDoubleTap = { offset ->
@@ -101,10 +109,35 @@ fun VideoPlayerScreen(
                         } else {
                             viewModel.fastForward()
                         }
+                    },
+                    // --- FIX IS HERE ---
+                    onLongPress = {
+                        if (isScreenLocked || !settings.longPressToPlayAt2xSpeed) return@detectTapGestures
+
+                        // Launch a coroutine to handle the press-and-hold logic
+                        coroutineScope.launch {
+                            viewModel.setPlaybackSpeed(2.0f, isTemporary = true)
+
+                            try {
+                                // This is the correct way to call a suspend function here
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        if (event.changes.any { it.pressed.not() }) {
+                                            break // Finger lifted
+                                        }
+                                    }
+                                }
+                            } finally {
+                                // Revert speed when the coroutine is cancelled or the loop breaks
+                                viewModel.setPlaybackSpeed(1.0f)
+                            }
+                        }
                     }
                 )
             }
-    ) {
+    )  {
+        // ... The rest of your file is correct and doesn't need to change
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -120,6 +153,7 @@ fun VideoPlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
+        // --- CHANGE 1: This UnlockButton should also be hidden in PiP mode ---
         if (isScreenLocked && !state.isInPipMode) {
             UnlockButton(
                 onLongPress = {
@@ -133,6 +167,7 @@ fun VideoPlayerScreen(
 
         val controlsVisible = !state.isInPipMode && !isScreenLocked && showControls
 
+        // --- CHANGE 2: Top controls visibility is already correct, no change needed here ---
         AnimatedVisibility(
             visible = controlsVisible,
             enter = fadeIn(),
@@ -150,17 +185,18 @@ fun VideoPlayerScreen(
             )
         }
 
+        // --- CHANGE 3: Center Play/Pause button needs to be hidden in PiP mode ---
         AnimatedVisibility(
-            visible = !isScreenLocked && showControls,
+            // Condition now includes a check for PiP mode
+            visible = !state.isInPipMode && !isScreenLocked && showControls,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.Center)
         ) {
             IconButton(
                 onClick = { viewModel.togglePlayPause() },
-                modifier = Modifier.size(if (state.isInPipMode) 48.dp else 72.dp)
+                modifier = Modifier.size(72.dp) // No need to check for PiP size anymore
             ) {
-
                 Icon(
                     painter = if (state.isPlaying) (painterResource(R.drawable.pause)) else (painterResource(R.drawable.play_arrow)),
                     contentDescription = if (state.isPlaying) "Pause" else "Play",
@@ -170,6 +206,7 @@ fun VideoPlayerScreen(
             }
         }
 
+        // --- CHANGE 4: Bottom controls visibility is already correct, no change needed here ---
         AnimatedVisibility(
             visible = controlsVisible,
             enter = fadeIn(),
@@ -184,19 +221,59 @@ fun VideoPlayerScreen(
                 onToggleLock = { isScreenLocked = !isScreenLocked },
                 isScreenLocked = isScreenLocked,
                 onEnterPipMode = onEnterPipMode,
-                onUserInteract = { userInteractedWithControls = it }
+                onSelectSubtitle = {
+                    Log.e("","get subtitle file clicked")
+                    subtitleLauncher.launch(arrayOf("application/x-subrip", "text/vtt"))
+                },
+                onUserInteract = { userInteractedWithControls = it },
+                onOptionsClicked = {
+                    showOptionsDialog = true
+                }
             )
         }
 
-        if (state.duration == 0L && state.error == null) {
+        // --- CHANGE 5: Loading indicator should also be hidden in PiP mode ---
+        if (state.duration == 0L && state.error == null && !state.isInPipMode) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
 
         state.error?.let {
             Text(text = "Error: $it", color = Color.Red, modifier = Modifier.align(Alignment.Center))
         }
+
+        // --- 3. DISPLAY THE DIALOG ---
+        if (showOptionsDialog) {
+            SelectionDialog(
+                video = video,
+                onDismiss = { showOptionsDialog = false },
+                onPlayClick = {
+                    // You might want to just dismiss the dialog, as the video is already playing
+                    showOptionsDialog = false
+                },
+                onAddToPlayListChecked = {
+                    // TODO: Implement "Add to Playlist" logic in your ViewModel
+                    Toast.makeText(context, "Add to Playlist clicked for ${it.name}", Toast.LENGTH_SHORT).show()
+                    showOptionsDialog = false
+                },
+                onRenameCLicked = {
+                    // TODO: Implement "Rename" logic
+                    Toast.makeText(context, "Rename clicked for ${it.name}", Toast.LENGTH_SHORT).show()
+                    showOptionsDialog = false
+                },
+                onDeleteClick = {
+                    // TODO: Implement "Delete" logic
+                    Toast.makeText(context, "Delete clicked for ${it.name}", Toast.LENGTH_SHORT).show()
+                    showOptionsDialog = false
+                },
+                // The following are unused in the provided dialog code but are kept for completeness
+                onSplitClick = { },
+                onMergeClick = { }
+            )
+        }
     }
+
 }
+
 
 @Composable
 fun UnlockButton(onLongPress: () -> Unit, onTap: () -> Unit) {
@@ -213,7 +290,9 @@ fun UnlockButton(onLongPress: () -> Unit, onTap: () -> Unit) {
             imageVector = Icons.Default.Lock,
             contentDescription = "Unlock",
             tint = Color.White,
-            modifier = Modifier.padding(horizontal = 24.dp).size(48.dp)
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .size(48.dp)
         )
     }
 }

@@ -9,8 +9,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
+import com.applications.player.databinding.ActivityComposeVideoPlayerBinding
 import com.applications.player.model.Video
 import com.applications.player.presentation.settings.SettingsViewModel
 import kotlinx.coroutines.flow.first
@@ -22,10 +25,21 @@ class VideoPlayerActivityCompose : ComponentActivity() {
 
     private val viewModel: VideoPlayerViewModel by inject()
     private val settingsViewModel: SettingsViewModel by inject()
+val binding: ActivityComposeVideoPlayerBinding by lazy {
+    ActivityComposeVideoPlayerBinding.inflate(layoutInflater)
+}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        setContentView(binding.root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left,0, systemBars.right, systemBars.bottom)
+            insets
+        }
+
 
         val video = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra("video", Video::class.java)
@@ -38,16 +52,18 @@ class VideoPlayerActivityCompose : ComponentActivity() {
             finish()
             return
         }
+binding.compose.setContent {
+    MaterialTheme {
+        VideoPlayerScreen(
+            video = video,
+            viewModel = viewModel,
+            onEnterPipMode = { enterPipMode(this) }
+        )
+    }
+}
+        /*setContent {
 
-        setContent {
-            MaterialTheme {
-                VideoPlayerScreen(
-                    video = video,
-                    viewModel = viewModel,
-                    onEnterPipMode = { enterPipMode(this) }
-                )
-            }
-        }
+        }*/
     }
 
     private fun enterPipMode(context: Context) {
