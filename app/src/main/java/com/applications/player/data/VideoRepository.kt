@@ -3,7 +3,9 @@ package com.applications.player.data
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.media.MediaMetadataRetriever
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -174,37 +176,32 @@ class VideoRepository(private val context: Context) {
 
 
     /**
-     * **[NEW]** Renames a video file on the file system and updates its
-     * entry in the MediaStore.
-     * This operation is non-blocking and runs on Dispatchers.IO.
+     * **[REVISED & MORE ROBUST]** Renames a video file and ensures MediaStore visibility.
+     *
+     * For Android 10 (API 29) and above, it uses the modern ContentResolver.update()
+     * method to handle the rename, which is the standard for Scoped Storage.
+     *
+     * For older versions, it falls back to a manual file system rename followed
+     * by a forceful media scan broadcast.
      *
      * @param video The video to rename.
      * @param newName The new file name (including extension).
      * @return The updated Video object if successful, null otherwise.
      */
     suspend fun renameVideo(video: Video, newName: String): Video? = withContext(Dispatchers.IO) {
-        val file = File(video.folderPath, video.name)
-        val newFile = File(video.folderPath, newName)
-
-        if (!file.exists()) {
-            Log.e("VideoRepository", "Rename failed: Source file not found at ${file.absolutePath}")
+        // Basic validation
+        if (newName.isBlank() || newName == video.name) {
+            Log.w("VideoRepository", "Rename aborted: New name is invalid or the same as the old name.")
             return@withContext null
         }
 
-        if (newFile.exists()) {
-            Log.e("VideoRepository", "Rename failed: A file with the new name already exists.")
-            return@withContext null
-        }
-
-        // 1. Rename the file on the file system
-        if (file.renameTo(newFile)) {
-            try {
-                // 2. Update the MediaStore
+        try {
+            // --- METHOD 1: Modern Approach for Android 10 (API 29) and above ---
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val contentValues = ContentValues().apply {
                     put(MediaStore.Video.Media.DISPLAY_NAME, newName)
-                    put(MediaStore.Video.Media.DATA, newFile.absolutePath)
                 }
-
+                // On API 29+, ContentResolver.update() can handle the file rename itself.
                 val rowsUpdated = context.contentResolver.update(
                     video.uri,
                     contentValues,
@@ -213,27 +210,68 @@ class VideoRepository(private val context: Context) {
                 )
 
                 if (rowsUpdated > 0) {
-                    Log.e("VideoRepository", "Successfully renamed '${video.name}' to '$newName'")
-                    // 3. Return the updated video object
-                    return@withContext video.copy(name = newName, uri = video.uri)
+                    Log.d("VideoRepository", "[API 29+] Successfully renamed via ContentResolver: '${video.name}' to '$newName'")
+                    // Return the updated video object
+                    return@withContext video.copy(name = newName)
                 } else {
-                    // If MediaStore update fails, try to revert the file name
-                    newFile.renameTo(file)
-                    Log.e("VideoRepository", "MediaStore update failed for ${video.uri}. Reverted file rename.")
+                    Log.e("VideoRepository", "[API 29+] Rename failed using ContentResolver for URI: ${video.uri}")
                     return@withContext null
                 }
-            } catch (e: Exception) {
-                // Catch any exceptions during MediaStore update and revert
-                newFile.renameTo(file)
-                Log.e("VideoRepository", "Exception during MediaStore update. Reverted file rename.", e)
-                return@withContext null
             }
-        } else {
-            Log.e("VideoRepository", "File system rename failed for '${file.absolutePath}'")
+            // --- METHOD 2: Legacy Approach for Android 9 (API 28) and below ---
+            else {
+                val oldFile = File(video.folderPath, video.name)
+                val newFile = File(video.folderPath, newName)
+
+                if (!oldFile.exists()) {
+                    Log.e("VideoRepository", "Rename failed: Source file not found at ${oldFile.absolutePath}")
+                    return@withContext null
+                }
+                if (newFile.exists()) {
+                    Log.e("VideoRepository", "Rename failed: A file with the new name already exists.")
+                    return@withContext null
+                }
+
+                // 1. Rename the file on the file system
+                if (oldFile.renameTo(newFile)) {
+                    // 2. Update the MediaStore database entry
+                    val contentValues = ContentValues().apply {
+                        put(MediaStore.Video.Media.DATA, newFile.absolutePath)
+                        put(MediaStore.Video.Media.DISPLAY_NAME, newName)
+                    }
+                    context.contentResolver.update(video.uri, contentValues, null, null)
+
+                    // 3. **[CRUCIAL FIX]** Force a media scan using a broadcast Intent.
+                    // This is a more forceful way to ensure the system updates its index.
+                    val scanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                    scanIntent.data = Uri.fromFile(newFile)
+                    context.sendBroadcast(scanIntent)
+
+                    // Also notify the scanner of the old file's removal
+                    MediaScannerConnection.scanFile(
+                        context,
+                        arrayOf(oldFile.absolutePath),
+                        null
+                    ) { path, uri ->
+                        Log.d("VideoRepository", "Legacy scan complete for old path: $path")
+                    }
+
+                    Log.d("VideoRepository", "Legacy rename successful. Broadcast sent for '${newFile.absolutePath}'")
+                    return@withContext video.copy(name = newName)
+                } else {
+                    Log.e("VideoRepository", "Legacy file system rename failed for '${oldFile.absolutePath}'")
+                    return@withContext null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("VideoRepository", "An exception occurred during rename operation for '${video.name}'", e)
+            // On failure, especially a security exception on API 29+, this is a likely outcome.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                Log.e("VideoRepository", "This might be a Scoped Storage permission issue. Ensure you have handled RecoverableSecurityException if necessary.")
+            }
             return@withContext null
         }
     }
-
     // --------------------------------------------------------------------------
     // Folder Loading Logic (No change needed here)
     // --------------------------------------------------------------------------

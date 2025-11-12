@@ -4,7 +4,7 @@ data class SettingsScreenState(
     val appLanguage: String = "English",
     val showNoMediaFiles: Boolean = false,
     val defaultScreenOrientation: String = "Auto-rotate(sensor)",
-    val decoder: String = "Use HW Decoder in Priority",
+    val decoder: String = "Hardware", // Changed from "Use HW Decoder in Priority"
     val showHiddenFiles: Boolean = false,
     val rememberAspectRatio: Boolean = true,
     val longPressToPlayAt2xSpeed: Boolean = true,
@@ -12,5 +12,6 @@ data class SettingsScreenState(
     val rememberBrightness: Boolean = true,
     val doubleTapToFastForwardAndRewind: Boolean = true,
     val autoPlayNext: Boolean = true,
-    val showMusic: Boolean = false
+    val showMusic: Boolean = false,
+    val isDecoderDialogShown: Boolean=false
 )

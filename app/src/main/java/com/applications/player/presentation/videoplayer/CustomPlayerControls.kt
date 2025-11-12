@@ -12,12 +12,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.graphics.shapes.circle
 import com.applications.player.presentation.videosOfFolder.formatDuration
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,7 +115,22 @@ fun CustomPlayerControls(
                 enabled = state.duration > 0,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 8.dp).clip(RectangleShape),
+                 // Clip the slider to have sharp corners
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(0xFF526CF8),
+                    activeTrackColor = Color(0xFF526CF8),
+                    inactiveTrackColor = Color.Gray.copy(alpha = 0.5f)
+                ),
+                // --- CUSTOM THUMB IMPLEMENTATION ---
+                thumb = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.thub_icon),
+                        contentDescription = "Slider thumb",
+                        modifier = Modifier.size(20.dp), // Adjust size as needed
+                        tint = Color(0xFF526CF8) // Set the color of your icon
+                    )
+                }
             )
             Text(formatDuration(state.duration), color = Color.White, fontSize = 12.sp)
         }

@@ -1,5 +1,7 @@
 package com.applications.player.presentation.videoplayer
 
+import com.applications.player.model.Video
+
 data class VideoPlayerState(
     // Playback data
     val isPlaying: Boolean = false,
@@ -12,5 +14,13 @@ data class VideoPlayerState(
     val isSeeking: Boolean = false,
     val showControls: Boolean = true,
     val error: String? = null,
-    val isInPipMode: Boolean = false // Tracks if the video is currently in PiP mode
+    val isInPipMode: Boolean = false ,// Tracks if the video is currently in PiP mode
+
+    val videoToRename: Video? = null, // <-- ADD THIS
+
+    val showOptonDialog: Boolean=false,
+
+    // --- ADD THESE NEW FLAGS ---
+    val isVideoDeleted: Boolean = false,
+    val isVideoRenamed: Boolean = false
 )

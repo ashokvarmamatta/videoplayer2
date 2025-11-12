@@ -1,5 +1,7 @@
 package com.applications.player.presentation.videoplayer
 
+import PlaylistEntity
+import PlaylistRepository
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -12,6 +14,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
+import com.applications.player.data.VideoRepository
 import com.applications.player.domain.SettingsRepository
 import com.applications.player.model.Video
 import com.applications.player.presentation.settings.SettingsScreenState
@@ -28,11 +31,14 @@ import kotlinx.coroutines.launch
 
 class VideoPlayerViewModel(
     application: Application,
-    private val settingsRepository: SettingsRepository // Inject repository
+    private val settingsRepository: SettingsRepository, // Inject repository,
+    private val videoRepository: VideoRepository
 ) : AndroidViewModel(application) {
 
     private val _state = MutableStateFlow(VideoPlayerState())
     val state: StateFlow<VideoPlayerState> = _state
+
+
 
     var player: ExoPlayer? = null
     private var mediaSession: MediaSession? = null
@@ -66,6 +72,8 @@ class VideoPlayerViewModel(
                     // if (oldSettings.defaultSpeed != newSettings.defaultSpeed) { ... }
                 }
         }
+
+
     }
 
     // --- Public API for UI Commands ---
@@ -136,6 +144,49 @@ class VideoPlayerViewModel(
         }
     }
 
+    fun renameVideo(video: Video, newName: String) {
+        viewModelScope.launch {
+            // Renaming makes the current URI invalid. The screen must close.
+            val updatedVideo = videoRepository.renameVideo(video, newName)
+            if (updatedVideo != null) {
+                // --- CHANGE 1: Set the isVideoRenamed flag ---
+                _state.update { it.copy(isVideoRenamed = true) }
+            }
+            // You might want to handle the 'else' case with an error message.
+        }
+    }
+
+
+    fun deleteVideo(video: Video) {
+        viewModelScope.launch {
+            val success = videoRepository.deleteVideo(video)
+            if (success) {
+                // --- CHANGE 2: Set the isVideoDeleted flag ---
+                _state.update { it.copy(isVideoDeleted = true) }
+            }
+            // You might want to handle the 'else' case with an error message.
+        }
+    }
+
+// --- CHANGE 3: Add this new function ---
+    /**
+     * Resets the one-time action flags after the UI has handled them.
+     */
+    fun onActionHandled() {
+        _state.update {
+            it.copy(
+                isVideoDeleted = false,
+                isVideoRenamed = false
+            )
+        }
+    }
+
+    fun onVideoRenameSelected(video: Video?) {
+        // This function will be used to show the rename dialog
+        _state.update { currentState ->
+            currentState.copy(videoToRename = video)
+        }
+    }
     fun addSubtitle(subtitleUri: Uri) {
         player?.let { p ->
             val currentMediaItem = p.currentMediaItem ?: return
@@ -178,6 +229,9 @@ class VideoPlayerViewModel(
 
     fun setIsInPipMode(isInPip: Boolean) {
         _state.update { it.copy(isInPipMode = isInPip) }
+    }
+    fun onShowDIalog(onShowdialog: Boolean){
+        _state.update { it.copy(showOptonDialog = onShowdialog) }
     }
 
     private fun startProgressUpdateJob() {

@@ -28,7 +28,17 @@ class SettingsRepositoryImpl(context: Context) : SettingsRepository {
         awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
+    // This function seems to be unused, but it's good practice to have it.
+    // If you intend to save the whole state at once, you can use it.
+    /*
     override suspend fun saveSettings(settings: SettingsScreenState) {
+        val json = gson.toJson(settings)
+        preferences.edit().putString(KEY_SETTINGS, json).apply()
+    }
+    */
+
+    // A private save function is better to avoid confusion with update methods.
+    private fun saveSettings(settings: SettingsScreenState) {
         val json = gson.toJson(settings)
         preferences.edit().putString(KEY_SETTINGS, json).apply()
     }
@@ -40,6 +50,22 @@ class SettingsRepositoryImpl(context: Context) : SettingsRepository {
         } else {
             SettingsScreenState() // Default settings
         }
+    }
+
+    // This is a placeholder implementation.
+    override suspend fun updateAppLanguage(language: String) {
+        val currentSettings = loadSettings()
+        saveSettings(currentSettings.copy(appLanguage = language))
+    }
+
+    override suspend fun updateDefaultScreenOrientation(orientation: String) {
+        val currentSettings = loadSettings()
+        saveSettings(currentSettings.copy(defaultScreenOrientation = orientation))
+    }
+
+    override suspend fun updateDecoder(decoder: String) {
+        val currentSettings = loadSettings()
+        saveSettings(currentSettings.copy(decoder = decoder))
     }
 
     override suspend fun updateShowNoMediaFiles(show: Boolean) {

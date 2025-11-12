@@ -338,7 +338,7 @@ fun SelectionDialog(
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.height(16.dp)) // Add space between title and options
-                OptionRow(iconResId = R.drawable.vid_play, text = "Play") { onPlayClick(video) }
+              //  OptionRow(iconResId = R.drawable.vid_play, text = "Play") { onPlayClick(video) }
                 OptionRow(iconResId = R.drawable.playlist_a, text = "Add to Playlist") { onAddToPlayListChecked(video) }
                 OptionRow(iconResId = R.drawable.rename, text = "Rename") { onRenameCLicked(video) }
                 OptionRow(iconResId = R.drawable.del, text = "Delete") { onDeleteClick(video) }

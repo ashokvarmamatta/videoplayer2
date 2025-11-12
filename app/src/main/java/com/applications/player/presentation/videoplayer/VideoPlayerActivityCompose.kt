@@ -57,7 +57,8 @@ binding.compose.setContent {
         VideoPlayerScreen(
             video = video,
             viewModel = viewModel,
-            onEnterPipMode = { enterPipMode(this) }
+            onEnterPipMode = { enterPipMode(this) },
+            onFinishActivity = { finish() }
         )
     }
 }

@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +49,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.startActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.util.UnstableApi
 import com.applications.player.R
 
@@ -81,11 +85,24 @@ fun HomeActivityScreen(
         val playlists by playlistsViewModel.playlists.collectAsState()
         val selectedPlaylist by playlistsViewModel.selectedPlaylist.collectAsState()
         val context = LocalContext.current
+        val lifecycleOwner = LocalLifecycleOwner.current
 
         // --- NEW: State for selected folder ---
         var selectedFolder by remember { mutableStateOf<Folder?>(null) }
 
-
+        // --- NEW: Refresh data on screen resume ---
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    homeActivityViewModel.loadAllVideos()
+                    homeActivityViewModel.loadFolders()
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
         LaunchedEffect(Unit) {
             homeActivityViewModel.onNavigationItemSelected(NavItem.FOLDERS)
         }
@@ -320,7 +337,7 @@ fun TopAppBar(
     val title = when {
         isInsidePlaylist -> selectedPlaylist!!.name
         isInsideFolder -> selectedFolder!!.name
-        else -> "Video Player"
+        else -> "Vexo Video Player"
     }
 
     Row(
