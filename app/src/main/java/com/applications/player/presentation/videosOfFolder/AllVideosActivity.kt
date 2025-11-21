@@ -1,6 +1,5 @@
 package com.applications.player.presentation.videosOfFolder
 
-
 import PlaylistSelectionDialog
 import PlaylistsViewModel
 import android.Manifest.permission
@@ -19,6 +18,8 @@ import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,11 +29,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,9 +48,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
@@ -57,12 +64,14 @@ import coil3.compose.rememberAsyncImagePainter
 import com.applications.player.R
 import com.applications.player.databinding.ActivityAllVideosBinding
 import com.applications.player.model.Video
-
-import com.applications.player.presentation.videosplitting.VideoSplittingActivity
-import com.applications.player.ui.theme.VideoPlayerTheme
-import org.koin.androidx.viewmodel.ext.android.viewModel
 import com.applications.player.presentation.videoMerging.VideoMergingActivity
 import com.applications.player.presentation.videoplayer.VideoPlayerActivityCompose
+import com.applications.player.presentation.videosplitting.VideoSplittingActivity
+import com.applications.player.ui.theme.VideoPlayerTheme
+import com.applications.player.util.ViewStyle
+import com.applications.player.util.ViewStyleManager
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
 
@@ -71,8 +80,9 @@ class AllVideosActivity : AppCompatActivity() {
     private val binding: ActivityAllVideosBinding by lazy {
         ActivityAllVideosBinding.inflate(layoutInflater)
     }
-    // This ViewModel now holds the logic for loading All vs. Filtered videos
     private val videoViewModel: VideoViewModel by viewModel()
+    // --- NEW: Inject ViewStyleManager ---
+    private val viewStyleManager: ViewStyleManager by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,110 +94,117 @@ class AllVideosActivity : AppCompatActivity() {
             insets
         }
 
-        // --- FIX: INITIAL VIDEO LOADING LOGIC MOVED TO START OF onCreate ---
-        // Load videos based on the intent filter. This MUST happen before permissions are checked
-        // AND before any state overwrites from a ViewModel init (which is now empty).
         loadVideosBasedOnIntent()
 
         val permChecker = registerForActivityResult<Array<String>, Map<String, Boolean>>(
-            ActivityResultContracts.RequestMultiplePermissions(),
-            ActivityResultCallback { result ->
-                for (s in result.keys) {
-                    if (result[s] == false) {
-                        // User denied a crucial permission
-                        Toast.makeText(this, "Storage permission required to view videos.", Toast.LENGTH_LONG).show()
-                        return@ActivityResultCallback
-                    }
-                }
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { result ->
+            if (result.values.all { it }) {
                 // Permissions granted, set up the Composable content
                 setupComposeContent()
-            })
+            } else {
+                // User denied a crucial permission
+                Toast.makeText(this, "Storage permission required to view videos.", Toast.LENGTH_LONG).show()
+                finish() // Close activity if permissions are denied
+            }
+        }
 
         // --- Permission Logic Execution ---
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (Environment.isExternalStorageManager()) {
                 setupComposeContent() // Already has permission, proceed
             } else {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                val uri = Uri.fromParts("package", packageName, null)
-                intent.data = uri
-                // Request 'All Files Access' permission
-                startActivity(intent)
+                try {
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    val uri = Uri.fromParts("package", packageName, null)
+                    intent.data = uri
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    // Fallback for devices that might not handle this intent
+                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                    startActivity(intent)
+                }
             }
         } else {
             // Request standard permissions for older APIs
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                permChecker.launch(
-                    arrayOf(
-                        permission.ACCESS_MEDIA_LOCATION,
-                        permission.READ_EXTERNAL_STORAGE,
-                        permission.WRITE_EXTERNAL_STORAGE,
-                        permission.CAMERA
-                    )
+            val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                arrayOf(
+                    permission.ACCESS_MEDIA_LOCATION,
+                    permission.READ_EXTERNAL_STORAGE,
+                    permission.WRITE_EXTERNAL_STORAGE,
+                    permission.CAMERA
                 )
             } else {
-                permChecker.launch(
-                    arrayOf(
-                        permission.READ_EXTERNAL_STORAGE,
-                        permission.WRITE_EXTERNAL_STORAGE,
-                        permission.CAMERA
-                    )
+                arrayOf(
+                    permission.READ_EXTERNAL_STORAGE,
+                    permission.WRITE_EXTERNAL_STORAGE,
+                    permission.CAMERA
                 )
             }
+            permChecker.launch(permissionsToRequest)
         }
     }
 
-    // Extracted video loading logic
     private fun loadVideosBasedOnIntent() {
         val folderPath = intent.getStringExtra("FILTER_FOLDER_PATH")
         if (folderPath != null) {
-            // Load videos ONLY for the specified folder
             videoViewModel.loadVideosByFolder(folderPath)
             Log.d("AllVideosActivity", "Loading videos for folder: $folderPath")
         } else {
-            // Load ALL videos (default behavior)
             videoViewModel.loadAllVideos()
             Log.d("AllVideosActivity", "Loading ALL videos.")
         }
     }
 
-    // New function to set up the Compose content and observe the state
     @OptIn(UnstableApi::class)
     private fun setupComposeContent() {
         binding.composeView.setContent {
             VideoPlayerTheme {
-                // *** FIX: Observing the correct StateFlow (videoListState) ***
                 val state by videoViewModel.videoListState.collectAsState()
                 var selectedVideo by remember { mutableStateOf<Video?>(null) }
                 var videoForPlaylistDialog by remember { mutableStateOf<Video?>(null) }
-
-                val playlistsViewModel: PlaylistsViewModel = koinViewModel()
-                val videoToAddToPlaylist by playlistsViewModel.videoToAddToPlaylist.collectAsState()
-                val playlists by playlistsViewModel.playlists.collectAsState()
-
-                // --- NEW: State to manage the rename dialog ---
                 var videoToRename by remember { mutableStateOf<Video?>(null) }
 
+                // --- NEW: State for view style ---
+                var currentViewStyle by remember { mutableStateOf(viewStyleManager.getViewStyle()) }
 
-                // Set the screen title dynamically
+                val playlistsViewModel: PlaylistsViewModel = koinViewModel()
+                val playlists by playlistsViewModel.playlists.collectAsState()
+
                 val folderPath = intent.getStringExtra("FILTER_FOLDER_PATH")
-                val screenTitle = if (folderPath != null) {
-                    // Extract the folder name from the path for the title
-                    File(folderPath).name // Use File to reliably get the name from the path
-                } else {
-                    "All Videos"
+                val screenTitle = folderPath?.let { File(it).name } ?: "All Videos"
+                val isFolderView = folderPath != null
+
+                // --- NEW: Use Scaffold to place the TopAppBar ---
+                Scaffold(
+                    topBar = {
+                        LocalTopAppBar(
+                            title = screenTitle,
+                            isFolderView = isFolderView,
+                            currentViewStyle = currentViewStyle,
+                            onToggleViewStyle = {
+                                val newStyle = if (currentViewStyle == ViewStyle.GRID) ViewStyle.LIST else ViewStyle.GRID
+                                viewStyleManager.saveViewStyle(newStyle)
+                                currentViewStyle = newStyle
+                            },
+                            onBackClick = { finish() } // Finishes the activity
+                        )
+                    }
+                ) { paddingValues ->
+                    Box(modifier = Modifier.padding(paddingValues)) {
+                        VideoListScreen(
+                            videoList = state.videos,
+                            isLoading = state.isLoading,
+                            title = screenTitle,
+                            // --- PASS VIEW STYLE ---
+                            viewStyle = currentViewStyle,
+                            onVideoClick = { video1 ->
+                                selectedVideo = video1
+                            }
+                        )
+                    }
                 }
 
-                VideoListScreen(
-                    videoList = state.videos, // Use the videos from the state
-                    isLoading = state.isLoading, // Pass loading state to UI
-                    title = screenTitle, // Pass dynamic title
-                    onVideoClick = { video1 ->
-                        selectedVideo = video1
-                    }
-                )
-
-                // Display error from state
                 if (state.error != null) {
                     Toast.makeText(this, state.error, Toast.LENGTH_LONG).show()
                 }
@@ -203,8 +220,7 @@ class AllVideosActivity : AppCompatActivity() {
                             startActivity(intent)
                         },
                         onAddToPlayListChecked = { video ->
-                           videoForPlaylistDialog = video
-
+                            videoForPlaylistDialog = video
                         },
                         onSplitClick = { video ->
                             selectedVideo = null
@@ -212,89 +228,123 @@ class AllVideosActivity : AppCompatActivity() {
                             intent.putExtra("videoUri", video.uri)
                             startActivity(intent)
                         },
-                        // --- NEW: Connect onRenameClicked ---
                         onRenameCLicked = { video ->
-                            selectedVideo = null // Dismiss the selection dialog
-                            videoToRename = video // Show the rename dialog
-                        },
-                       /* onCropClick = { video ->
                             selectedVideo = null
-                            val intent = Intent(this@AllVideosActivity, VideoCropActivity::class.java)
-                            intent.putExtra("videoUri", video.uri)
-                            startActivity(intent)
-                        },*/
+                            videoToRename = video
+                        },
                         onMergeClick = { video ->
                             selectedVideo = null
                             val intent = Intent(this@AllVideosActivity, VideoMergingActivity::class.java)
                             intent.putExtra("videoUri", video.uri)
                             startActivity(intent)
                         },
-                        // --- NEW: Handle Delete Click ---
                         onDeleteClick = { video ->
                             selectedVideo = null
                             videoViewModel.deleteVideo(video)
-                            // In a full MVVM/Repository pattern, this would call videoViewModel.deleteVideo(video)
-                            // We use a Toast and refresh here as a placeholder for the delete operation.
-                            Log.d("AllVideosActivity", "Attempting to delete video: ${video.name}")
-                            Toast.makeText(this@AllVideosActivity, "Delete request sent for ${video.name}. List will refresh.", Toast.LENGTH_SHORT).show()
-                            loadVideosBasedOnIntent() // Refresh list immediately
+                            Toast.makeText(this@AllVideosActivity, "Delete request sent for ${video.name}.", Toast.LENGTH_SHORT).show()
                         }
                     )
                 }
-              if(videoForPlaylistDialog!=null) {
-                  // Handle adding to playlist logic here
-                  PlaylistSelectionDialog(
-                      video = selectedVideo!!,
-                      playlists = playlists,
-                      onDismiss = { playlistsViewModel.onDismissPlaylistDialog() },
-                      onPlaylistSelected = { playlist, videoToAdd ->
-                          playlistsViewModel.addVideoToPlaylist(playlist, videoToAdd)
-                          videoForPlaylistDialog = null
-                          selectedVideo=null
-                      },
-                      onAddNewPlaylist = { playlistName ->
-                          playlistsViewModel.createNewPlaylist(playlistName)
+                if (videoForPlaylistDialog != null) {
+                    PlaylistSelectionDialog(
+                        video = videoForPlaylistDialog!!,
+                        playlists = playlists,
+                        onDismiss = {
+                            videoForPlaylistDialog = null
+                            selectedVideo = null
+                        },
+                        onPlaylistSelected = { playlist, videoToAdd ->
+                            playlistsViewModel.addVideoToPlaylist(playlist, videoToAdd)
+                            videoForPlaylistDialog = null
+                            selectedVideo = null
+                        },
+                        onAddNewPlaylist = { playlistName ->
+                            playlistsViewModel.createNewPlaylist(playlistName)
+                        }
+                    )
+                }
 
-                      }
-                  )
-              }
-
-                // --- NEW: Show Rename Dialog when videoToRename is not null ---
                 if (videoToRename != null) {
                     RenameVideoDialog(
                         video = videoToRename!!,
                         onDismiss = { videoToRename = null },
                         onRename = { video, newName ->
-                            // Call the ViewModel to perform the rename operation
                             val currentFolder = intent.getStringExtra("FILTER_FOLDER_PATH")
                             videoViewModel.renameVideo(video, newName, currentFolder)
-                            videoToRename = null // Dismiss the dialog
+                            videoToRename = null
                             Toast.makeText(this, "Renaming video...", Toast.LENGTH_SHORT).show()
                         }
                     )
                 }
-
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-
-        // --- FIX: Refresh logic in onResume ---
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Check if permission is granted again after the user returns from settings
-            if (Environment.isExternalStorageManager()) {
-                setupComposeContent() // Set content if permissions are confirmed
-                loadVideosBasedOnIntent() // Reload videos to pick up any new files
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+            loadVideosBasedOnIntent()
         } else {
-            // For older versions, the content is set after the permission checker result,
-            // but we should still reload videos to refresh the list.
+            // For older versions, permission result handles the first load,
+            // this handles subsequent resumes.
             loadVideosBasedOnIntent()
         }
     }
 }
+
+// --- NEW: A Local Top App Bar for this specific Activity ---
+@Composable
+fun LocalTopAppBar(
+    title: String,
+    isFolderView: Boolean,
+    currentViewStyle: ViewStyle,
+    onToggleViewStyle: () -> Unit,
+    onBackClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, start = 4.dp, end = 4.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Show back button only if viewing videos from a specific folder
+        if (isFolderView) {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.width(16.dp))
+        }
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Start
+        )
+
+        IconButton(onClick = onToggleViewStyle) {
+            val iconRes = if (currentViewStyle == ViewStyle.GRID) {
+                R.drawable.vp_toggle_mode
+            } else {
+                R.drawable.menu
+            }
+            AsyncImage(
+                model = iconRes,
+                modifier = Modifier.size(25.dp),
+                contentDescription = "Toggle View Style"
+            )
+        }
+    }
+}
+
+// Note: RenameVideoDialog, SelectionDialog etc. are assumed to be in the same file or imported.
+
 
 
 

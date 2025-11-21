@@ -2,10 +2,14 @@ package com.applications.player.presentation.homeScreen
 
 import PlaylistEntity
 import PlaylistRepository
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.applications.player.data.VideoRepository
 import com.applications.player.model.Video
+import com.applications.player.presentation.videosbyfolders.Folder
+import com.applications.player.util.ViewStyle
+import com.applications.player.util.ViewStyleManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,17 +17,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 
 
-class HomeActivityViewModel(private  val videoRepository: VideoRepository, private val playlistRepository: PlaylistRepository) : ViewModel() {
+class HomeActivityViewModel(
+    private val videoRepository: VideoRepository,
+    private val playlistRepository: PlaylistRepository,
+    private val viewStyleManager: ViewStyleManager // Inject the manager
+) : ViewModel() {
 
-    private val _homeActivityModel = MutableStateFlow(HomeActivityState(itemSelected = NavItem.VIDEOS))
+    private val _homeActivityModel = MutableStateFlow(HomeActivityState())
     val homeActivityState: StateFlow<HomeActivityState> = _homeActivityModel.asStateFlow()
 
     init {
+        // Load the initial view style from SharedPreferences
+        val initialStyle = viewStyleManager.getViewStyle()
+        _homeActivityModel.update { it.copy(viewStyle = initialStyle) }
+
         loadAllVideos()
         loadFolders()
-
     }
 
     // Public function to handle UI events (clicks)
@@ -80,18 +92,26 @@ class HomeActivityViewModel(private  val videoRepository: VideoRepository, priva
 
     fun loadVideosOfFolder(folderPath: String) {
         viewModelScope.launch {
-            _homeActivityModel.update { it.copy(isLoadingFolders = true, error = null) }
+            // 1. Set loading to true
+            _homeActivityModel.update { it.copy(isLoadingVideosInFolder = true) }
             try {
-                val videosFolders = videoRepository.getVideosByFolder(folderPath)
+                val videos = videoRepository.getVideosByFolder(folderPath)
+                // 2. Set the data and turn loading off
                 _homeActivityModel.update {
-                    it.copy(
-                        videos = videosFolders,
-                        isLoadingFolders = false)
+                    it.copy(videosInFolder = videos, isLoadingVideosInFolder = false)
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
+                // 3. Turn loading off on error
+                _homeActivityModel.update { it.copy(isLoadingVideosInFolder = false) }
             }
-
         }
+    }
+
+
+    // ADD THIS FUNCTION: To clear the folder view when going back
+    fun clearVideosInFolder() {
+        _homeActivityModel.update { it.copy(videosInFolder = emptyList()) }
     }
 
 
@@ -137,7 +157,7 @@ class HomeActivityViewModel(private  val videoRepository: VideoRepository, priva
                 videoRepository.getAllVideosChunked()
                     .collect { chunkedVideos ->
                         _homeActivityModel.update {
-                            it.copy(videos = chunkedVideos)
+                            it.copy(videos = it.videos + chunkedVideos)
                         }
                     }
                 _homeActivityModel.update { it.copy(isAllLoading = false) }
@@ -166,5 +186,14 @@ class HomeActivityViewModel(private  val videoRepository: VideoRepository, priva
         }
     }
 
-}
+    /**
+     * Toggles the view style between GRID and LIST and saves the preference.
+     */
+    fun toggleViewStyle() {
+        val currentStyle = _homeActivityModel.value.viewStyle
+        val newStyle = if (currentStyle == ViewStyle.GRID) ViewStyle.LIST else ViewStyle.GRID
+        viewStyleManager.saveViewStyle(newStyle)
+        _homeActivityModel.update { it.copy(viewStyle = newStyle) }
+    }
 
+}

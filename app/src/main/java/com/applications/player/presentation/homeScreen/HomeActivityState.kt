@@ -2,6 +2,8 @@ package com.applications.player.presentation.homeScreen
 
 import com.applications.player.model.Video
 import com.applications.player.presentation.videosbyfolders.Folder
+import com.applications.player.util.ViewStyle
+import com.applications.player.util.ViewStyleManager
 
 data class HomeActivityState(
     var itemSelected: NavItem = NavItem.FOLDERS,
@@ -14,7 +16,10 @@ data class HomeActivityState(
 
     //loading videos
     val videos: List<Video> = emptyList(),
+    val videosInFolder: List<Video> = emptyList(),
     var isAllLoading: Boolean = false,
+
+    var isLoadingVideosInFolder: Boolean = false,
 
     //loading playlists
     // val playlists: List<Playlist> = emptyList(),
@@ -24,7 +29,9 @@ data class HomeActivityState(
     val folders: List<Folder> = emptyList(),
     var isLoadingFolders: Boolean = false,
 
-    val videoToRename: Video? = null, // <-- ADD THIS
+    val videoToRename: Video? = null,
+
+    val viewStyle : ViewStyle= ViewStyle.LIST
 
 
 )

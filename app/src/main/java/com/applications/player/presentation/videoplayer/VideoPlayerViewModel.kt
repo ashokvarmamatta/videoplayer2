@@ -2,8 +2,10 @@ package com.applications.player.presentation.videoplayer
 
 import PlaylistEntity
 import PlaylistRepository
+import android.app.Activity
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
@@ -79,6 +81,9 @@ class VideoPlayerViewModel(
     // --- Public API for UI Commands ---
 
     fun initPlayer(video: Video) {
+        // --- FIX: Ensure any previous player is released before creating a new one ---
+        releasePlayer()
+
         if (player == null) {
             viewModelScope.launch {
                 // Fetch initial settings before creating the player
@@ -125,6 +130,56 @@ class VideoPlayerViewModel(
 
     fun seekTo(position: Long) {
         player?.seekTo(position)
+    }
+    private var wasPlayingBeforePause = false
+
+    fun onPause() {
+        wasPlayingBeforePause = player?.isPlaying ?: false
+        player?.pause()
+    }
+
+    // START: Add this new function
+    fun onBrightnessChanged(newBrightness: Int) {
+        viewModelScope.launch {
+            settingsRepository.updateBrightness(newBrightness)
+        }
+    }
+
+    // START: Add this new function
+    fun applyRememberedBrightness(activity: Activity) {
+        viewModelScope.launch {
+            // First, get the current state of the settings
+            val currentSettings = settingsRepository.getSettings().first()
+
+            // Check if the "rememberBrightness" setting is enabled
+            if (currentSettings.rememberBrightness) {
+                val lastBrightness = currentSettings.brightness
+
+                // Android brightness values are 0-255, but the setting is stored as a float 0.0-1.0
+                // We need to convert it before applying
+                val brightnessValue = lastBrightness / 255f
+
+                // Get the window from the activity and set its brightness
+                val window = activity.window
+                val layoutParams = window.attributes
+                layoutParams.screenBrightness = brightnessValue
+                window.attributes = layoutParams
+
+                Log.d("Brightness", "Applied remembered brightness: $lastBrightness ($brightnessValue)")
+            }
+        }
+    }
+    fun onResume() {
+        // Only resume playback if it was playing before onPause was called.
+        if (wasPlayingBeforePause) {
+            player?.play()
+        }
+        wasPlayingBeforePause = false // Reset the flag
+    }
+
+    // Add this helper function
+    fun wasPlaying(): Boolean {
+        return wasPlayingBeforePause
     }
 
     fun rewind(seconds: Int = 10) {

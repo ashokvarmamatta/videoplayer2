@@ -13,5 +13,6 @@ data class SettingsScreenState(
     val doubleTapToFastForwardAndRewind: Boolean = true,
     val autoPlayNext: Boolean = true,
     val showMusic: Boolean = false,
-    val isDecoderDialogShown: Boolean=false
+    val isDecoderDialogShown: Boolean=false,
+    val brightness: Int =255
 )

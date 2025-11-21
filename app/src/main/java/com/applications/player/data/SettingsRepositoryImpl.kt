@@ -112,4 +112,12 @@ class SettingsRepositoryImpl(context: Context) : SettingsRepository {
         val currentSettings = loadSettings()
         saveSettings(currentSettings.copy(showMusic = show))
     }
+
+    override suspend fun updateBrightness(brightness: Int) {
+        val currentSettings = loadSettings()
+        saveSettings(currentSettings.copy(brightness = brightness))
+
+    }
+
+
 }

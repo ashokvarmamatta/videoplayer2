@@ -15,14 +15,21 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.applications.player.presentation.TorrentStreamer.VideoStreamActivity
 import com.applications.player.presentation.videosOfFolder.AllVideosActivity
 import com.applications.player.ui.theme.VideoPlayerTheme
+import com.applications.player.util.ViewStyleManager
+import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import kotlin.getValue
 
 class VideosByFoldersActivity : AppCompatActivity() {
 
     private val foldersViewModel: FoldersViewModel by viewModel()
+    private val viewStyleManager: ViewStyleManager by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -43,6 +50,8 @@ class VideosByFoldersActivity : AppCompatActivity() {
                 setContent {
                     VideoPlayerTheme {
                         val state by foldersViewModel.folderListState.collectAsState()
+                        // --- NEW: State for view style ---
+                        var currentViewStyle by remember { mutableStateOf(viewStyleManager.getViewStyle()) }
 
 
 
@@ -50,7 +59,7 @@ class VideosByFoldersActivity : AppCompatActivity() {
                             folders = state.folders,
                             onFolderClick = { folder ->
                                 openAllVideosActivity(folder.path)
-                            },{
+                            },currentViewStyle,{
 startActivity(Intent(this, VideoStreamActivity::class.java))
                             }
                         )
@@ -64,12 +73,13 @@ startActivity(Intent(this, VideoStreamActivity::class.java))
                 setContent {
                     VideoPlayerTheme {
                         val state by foldersViewModel.folderListState.collectAsState()
+                        var currentViewStyle by remember { mutableStateOf(viewStyleManager.getViewStyle()) }
 
                         VideosByFoldersScreen(
                             folders = state.folders,
                             onFolderClick = { folder ->
                                 openAllVideosActivity(folder.path)
-                            },{
+                            },currentViewStyle,{
                                 startActivity(Intent(this, VideoStreamActivity::class.java))
                             }
                         )
@@ -119,6 +129,8 @@ startActivity(Intent(this, VideoStreamActivity::class.java))
             setContent {
                 VideoPlayerTheme {
                     val state by foldersViewModel.folderListState.collectAsState()
+                    // --- NEW: State for view style ---
+                    var currentViewStyle by remember { mutableStateOf(viewStyleManager.getViewStyle()) }
 
 
 
@@ -126,7 +138,7 @@ startActivity(Intent(this, VideoStreamActivity::class.java))
                         folders = state.folders,
                         onFolderClick = { folder ->
                             openAllVideosActivity(folder.path)
-                        },{
+                        },currentViewStyle,{
                             startActivity(Intent(this, VideoStreamActivity::class.java))
                         }
                     )

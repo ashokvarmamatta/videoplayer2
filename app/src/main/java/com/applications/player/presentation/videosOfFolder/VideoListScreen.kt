@@ -11,6 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -18,6 +21,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
 import com.applications.player.model.Video
+import com.applications.player.util.ViewStyle
 import java.util.concurrent.TimeUnit
 
 // This Composable now uses your VideoCard
@@ -25,6 +29,7 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun VideoListScreen(
     videoList: List<Video>,
+    viewStyle: ViewStyle,
     isLoading: Boolean,
     title: String,
     onVideoClick: (Video) -> Unit,
@@ -62,13 +67,29 @@ fun VideoListScreen(
                 }
 
                 else -> {
-                    // Display the actual list of videos using your VideoCard
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(videoList, key = { it.id }) { video ->
-                            VideoCard(video = video, onClick = { onVideoClick(video) })
+                    // --- MODIFIED: Conditionally show Grid or List ---
+                    if (viewStyle == ViewStyle.GRID) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 120.dp),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(videoList, key = { it.id }) { video ->
+                                VideoGridItem(video = video, onClick = { onVideoClick(video) })
+                            }
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(videoList, key = { it.id }) { video ->
+                                VideoCard(video = video, onClick = { onVideoClick(video) })
+                                Divider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 8.dp))
+                            }
                         }
                     }
                 }
+
             }
         }
     }
@@ -95,7 +116,9 @@ fun VideoCard(video: Video, onClick: () -> Unit) {
             AsyncImage(
                 model = video.thumbnailUri,
                 contentDescription = "Thumbnail for ${video.name}",
-                modifier = Modifier.size(width = 100.dp, height = 60.dp).clip(RoundedCornerShape(5)),
+                modifier = Modifier
+                    .size(width = 100.dp, height = 60.dp)
+                    .clip(RoundedCornerShape(5)),
                 contentScale = ContentScale.Crop
                 // Ensure you have added the Coil dependencies: 'coil-compose' and 'coil-video'
             )
@@ -131,6 +154,49 @@ fun VideoCard(video: Video, onClick: () -> Unit) {
         }
     }
 }
+
+
+@Composable
+fun VideoGridItem(video: Video, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Thumbnail
+        AsyncImage(
+            model = video.thumbnailUri,
+            contentDescription = "Thumbnail for ${video.name}",
+            modifier = Modifier
+                .height(80.dp) // Fixed height for a uniform grid
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Video Name
+        Text(
+            text = video.name,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 2, // Allow for slightly longer names
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+
+        // Video Duration
+        Text(
+            text = formatDuration(video.duration),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+    }
+}
+
 
 // --- Utility Functions (Required for VideoCard) ---
 

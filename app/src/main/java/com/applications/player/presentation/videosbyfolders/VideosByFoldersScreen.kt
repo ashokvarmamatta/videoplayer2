@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,92 +28,67 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.applications.player.R
+import com.applications.player.util.ViewStyle // <-- Import ViewStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VideosByFoldersScreen(
-    folders: List<Folder>,
-    onFolderClick: (Folder) -> Unit,
-    onStreamLinkClicked: (Boolean) -> Unit
+fun VideosByFoldersScreen(folders: List<Folder>,
+                          onFolderClick: (Folder) -> Unit,
+                          viewStyle: ViewStyle,
+                          onStreamLinkClicked: (Boolean) -> Unit
 ) {
     Scaffold(
-        /*topBar = {
-            TopAppBar(title = { Text("Folders") })
-        }*/
-        /* bottomBar = {
-             BottomNavigationBar()
-         },*/
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
+        // --- FIX IS HERE: Add .fillMaxSize() to the Column ---
+        Column(modifier = Modifier
+            .padding(paddingValues)
+            .fillMaxSize() // This ensures the Column takes up all available space
+        ) {
 
-
-        Column(modifier = Modifier.padding(paddingValues)) {
-            /*Spacer(modifier = Modifier.height(28.dp))
-            Row(
-                modifier = Modifier.padding(paddingValues),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                //load image from resource drawable R.drawable.icon1 using AsynceImage
-                Spacer(modifier = Modifier.width(8.dp))
-                AsyncImage(
-                    model = R.drawable.menu,
-                    contentDescription = "Icon",
-                    modifier = Modifier
-                        .width(50.dp)
-                        .padding(10.dp),
-                    colorFilter = ColorFilter.tint(Color.Black)
-                )
-
-                Text("Video Player ", Modifier.clickable {
-                    onStreamLinkClicked.invoke(true)
-                })
-
-            }*/
-
-
-
-            LazyColumn(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .weight(1f),
-                contentPadding = PaddingValues(8.dp)
-            ) {
-
-
-                items(folders, key = { it.path }) { folder ->
-                    FolderCard(folder = folder, onClick = { onFolderClick(folder) })
-                    //Divider()
+            // --- Conditionally display Grid or List ---
+            // This code is now correct because its parent has a defined size.
+            if (viewStyle == ViewStyle.GRID) {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 120.dp),
+                    modifier = Modifier.weight(1f), // .weight(1f) will now work correctly
+                    contentPadding = PaddingValues(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(folders, key = { it.path }) { folder ->
+                        FolderGridItem(folder = folder, onClick = { onFolderClick(folder) })
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f), // .weight(1f) will now work correctly
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                ) {
+                    items(folders, key = { it.path }) { folder ->
+                        FolderCard(folder = folder, onClick = { onFolderClick(folder) })
+                        Divider(color = Color.LightGray.copy(alpha = 0.5f))
+                    }
                 }
             }
-
-          //  BottomNavRow()
-
-
         }
-
-
     }
 }
 
@@ -184,7 +162,7 @@ fun FolderCard(folder: Folder, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 8.dp),
+            .padding(vertical = 12.dp, horizontal = 8.dp), // Increased vertical padding for list item
         verticalAlignment = Alignment.CenterVertically
     ) {
         Log.e(
@@ -194,15 +172,14 @@ fun FolderCard(folder: Folder, onClick: () -> Unit) {
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(folder.thumbnailUri) // Pass the File object directly
-                // Optional: Specify a time frame in milliseconds (e.g., 5 seconds)
                 .crossfade(true)
                 .build(),
             contentDescription = "Thumbnail for your video",
-            modifier = Modifier.size(width = 100.dp, height = 60.dp).clip(RoundedCornerShape(8.dp)),
+            modifier = Modifier
+                .size(width = 100.dp, height = 60.dp)
+                .clip(RoundedCornerShape(8.dp)),
             contentScale = ContentScale.Crop
         )
-
-
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -210,7 +187,8 @@ fun FolderCard(folder: Folder, onClick: () -> Unit) {
             Text(
                 text = folder.name,
                 style = MaterialTheme.typography.titleMedium,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "${folder.videoCount} videos",
@@ -226,45 +204,44 @@ fun FolderCard(folder: Folder, onClick: () -> Unit) {
     }
 }
 
-
 @Composable
-fun BottomNavigationBar() {
-    // A list of items to display in the navigation bar
-    val items = listOf(
-        "Folders" to R.drawable.folder_video, // Replace with your actual drawable
-        "Videos" to R.drawable.menu,   // Replace with your actual drawable
-        "Playlists" to R.drawable.menu, // Replace with your actual drawable
-        "Settings" to R.drawable.menu  // Replace with your actual drawable
-    )
-
-    NavigationBar(
-        // Set the background color to match the image
-        //containerColor = Color(0xFF1F1F2E) // A dark color similar to the screenshot
+fun FolderGridItem(folder: Folder, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        items.forEachIndexed { index, item ->
-            val label = item.first
-            val iconRes = item.second
-            val isSelected = index == 0 // "Folders" is selected in the image
+        // Thumbnail from the first video in the folder
+        AsyncImage(
+            model = folder.thumbnailUri,
+            contentDescription = "Thumbnail for ${folder.name}",
+            modifier = Modifier
+                .height(80.dp) // Set a fixed height for a uniform grid
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp)), // Adds rounded corners to the thumbnail
+            contentScale = ContentScale.Crop // Ensures the image fills the space
+        )
 
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = label,
-                        modifier = Modifier.size(24.dp),
-                    )
-                },
-                label = { Text(label) },
-                selected = isSelected,
-                onClick = { /* TODO: Handle navigation */ },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Color.White,
-                    unselectedIconColor = Color.White.copy(alpha = 0.7f),
-                    selectedTextColor = Color.White,
-                    unselectedTextColor = Color.White.copy(alpha = 0.7f),
-                    indicatorColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) // Or a specific color you want
-                )
-            )
-        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Folder Name
+        Text(
+            text = folder.name,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
+
+        // Video Count
+        Text(
+            text = "${folder.videoCount} videos",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
     }
 }

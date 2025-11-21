@@ -42,8 +42,7 @@ import coil3.compose.AsyncImage
 import com.applications.player.R
 import org.koin.androidx.compose.koinViewModel
 
-// NOTE: Since I don't have access to the specific icons from your screenshot,
-// I'll use placeholders from Icons.Default and Icons.AutoMirrored.
+
 
 /**
  * Main composable for the Settings screen.
@@ -70,7 +69,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // ... (rest of the LazyColumn items remain the same)
+
             item {
                 SettingsNavigationItem(
                     icon = Icons.Default.Settings, // Placeholder
@@ -164,6 +163,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
                 icon = Icons.Default.Settings, // Placeholder
                 title = "Remember brightness",
                 checked = uiState.rememberBrightness,
+
                 description = "Turn on to remember brightness for all videos.",
                 onCheckedChange = viewModel::onRememberBrightnessChange
             )

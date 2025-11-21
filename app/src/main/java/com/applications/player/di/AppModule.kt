@@ -10,6 +10,7 @@ import com.applications.player.presentation.settings.SettingsViewModel
 import com.applications.player.presentation.videoplayer.VideoPlayerViewModel
 import com.applications.player.presentation.videosOfFolder.VideoViewModel
 import com.applications.player.presentation.videosbyfolders.FoldersViewModel
+import com.applications.player.util.ViewStyleManager
 import org.koin.android.ext.koin.androidApplication
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -21,12 +22,17 @@ val appModule = module {
     // --- Data Layer ---
     single { VideoRepository(get()) } // Assuming your repository needs a Context or other dependency
 
+    // Tells Koin how to create a ViewStyleManager. It will be a singleton.
+    single { ViewStyleManager(androidContext()) }
+
 
     viewModel { VideoViewModel(get()) }
     viewModel { FoldersViewModel(get()) }
     viewModel { VideoPlayerViewModel(androidApplication(),get(),get()) }
 
-    viewModel { HomeActivityViewModel(get(),get ()) }
+    viewModel { HomeActivityViewModel( videoRepository = get(),
+        playlistRepository = get(),
+        viewStyleManager = get()) }
 
     // ViewModel for Playlists
     viewModel {

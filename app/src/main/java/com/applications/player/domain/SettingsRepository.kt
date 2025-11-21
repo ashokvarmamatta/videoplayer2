@@ -31,4 +31,8 @@ interface SettingsRepository {
     suspend fun updateAutoPlayNext(enable: Boolean)
 
     suspend fun updateShowMusic(show: Boolean)
+
+    suspend fun updateBrightness(brightness: Int)
+
+
 }

@@ -43,12 +43,16 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import com.applications.player.model.Video
 import com.applications.player.presentation.homeScreen.RenameVideoDialog
+import com.applications.player.presentation.settings.SettingsScreenState
 import com.applications.player.presentation.settings.SettingsViewModel
 import com.applications.player.presentation.videoMerging.VideoMergingActivity
 import com.applications.player.presentation.videosOfFolder.SelectionDialog
 import com.applications.player.presentation.videosplitting.VideoSplittingActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.provider.Settings
+import android.database.ContentObserver
+
 import org.koin.androidx.compose.koinViewModel
 
 
@@ -58,7 +62,8 @@ fun VideoPlayerScreen(
     video: Video,
     viewModel: VideoPlayerViewModel = koinViewModel(),
     onEnterPipMode: () -> Unit,
-    onFinishActivity:() -> Unit
+    onFinishActivity:() -> Unit,
+    onSettingsChanged: (SettingsScreenState) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val settingsViewModel: SettingsViewModel = koinViewModel()
@@ -83,7 +88,60 @@ fun VideoPlayerScreen(
     val playlists by playlistsViewModel.playlists.collectAsState()
     val selectedPlaylist by playlistsViewModel.selectedPlaylist.collectAsState()
 
+    // START: Add these lines
+    var brightness by remember {
+        mutableStateOf(
+            Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        )
+    }
 
+
+
+
+    LaunchedEffect(settings) {
+        onSettingsChanged(settings)
+    }
+
+
+    // START: Modify the DisposableEffect
+    DisposableEffect(settings.rememberBrightness) { // Keyed to the setting now
+        val contentResolver = context.contentResolver
+        val brightnessUri = Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS)
+
+        val observer = object : ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                val newBrightness = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+                if (brightness != newBrightness) {
+                    brightness = newBrightness
+                    Log.d("BrightnessTracker", "Brightness changed to: $newBrightness")
+
+                    // --- THIS IS THE NEW LOGIC ---
+                    if (settings.rememberBrightness) {
+                        viewModel.onBrightnessChanged(newBrightness)
+                    }
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        viewModel.applyRememberedBrightness(activity)
+                    }
+                    // -----------------------------
+                }
+            }
+        }
+
+        // Only register the observer if the setting is enabled
+        if (settings.rememberBrightness) {
+            contentResolver.registerContentObserver(brightnessUri, true, observer)
+            Log.d("BrightnessTracker", "Brightness observer registered.")
+        }
+
+        // Clean up the observer when the effect disposes
+        onDispose {
+            if (settings.rememberBrightness) {
+                contentResolver.unregisterContentObserver(observer)
+                Log.d("BrightnessTracker", "Brightness observer unregistered.")
+            }
+        }
+    }
 
 
     SystemUiAndOrientationManager(
@@ -91,8 +149,15 @@ fun VideoPlayerScreen(
         orientation = settings.defaultScreenOrientation
     )
 
+
+
     DisposableEffect(video) {
         viewModel.initPlayer(video)
+
+        val activity = context as? Activity
+        if (activity != null) {
+            viewModel.applyRememberedBrightness(activity)
+        }
         onDispose { viewModel.releasePlayer() }
     }
 
@@ -205,20 +270,28 @@ fun VideoPlayerScreen(
 
         val controlsVisible = !state.isInPipMode && !isScreenLocked && showControls
 
-        // --- CHANGE 2: Top controls visibility is already correct, no change needed here ---
         AnimatedVisibility(
-            visible = controlsVisible,
-            enter = fadeIn(),
+            visible = controlsVisible,            enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             TopAppBar(
-                title = { Text(video.name, color = Color.White) },
-                navigationIcon = {
+                title = { Text(video.name, color = Color.White) },    navigationIcon = {
+                    // This triggers onBackPressed() -> finish() -> onPause()
                     IconButton(onClick = { onBackPressedDispatcher?.onBackPressed() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                actions = {
+                    // This also triggers finish() -> onPause()
+                    IconButton(onClick = { onFinishActivity() }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.fullscreen_exit_),
+                            contentDescription = "Close Player",
                             tint = Color.White
                         )
                     }
@@ -273,7 +346,7 @@ fun VideoPlayerScreen(
                 onUserInteract = { userInteractedWithControls = it },
                 onOptionsClicked = {
                     viewModel.togglePlayPause(false)
-                   viewModel.onShowDIalog(true)
+                    viewModel.onShowDIalog(true)
                 }
             )
         }
@@ -369,8 +442,7 @@ fun SystemUiAndOrientationManager(isFullScreen: Boolean, orientation: String) {
             "Portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
             else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
-        activity.requestedOrientation =
-            if (isFullScreen) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else requestedOrientation
+        activity.requestedOrientation = requestedOrientation
 
         if (isFullScreen) {
             insetsController.hide(WindowInsetsCompat.Type.systemBars())
@@ -378,11 +450,11 @@ fun SystemUiAndOrientationManager(isFullScreen: Boolean, orientation: String) {
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
             insetsController.show(WindowInsetsCompat.Type.systemBars())
-            insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+            insetsController.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
         }
     }
 }
-
 
 @OptIn(UnstableApi::class)
 @Composable

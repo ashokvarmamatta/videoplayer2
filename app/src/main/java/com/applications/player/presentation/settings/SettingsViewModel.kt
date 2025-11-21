@@ -31,7 +31,9 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
             doubleTapToFastForwardAndRewind = settings.doubleTapToFastForwardAndRewind,
             autoPlayNext = settings.autoPlayNext,
             showMusic = settings.showMusic,
-            isDecoderDialogShown = isDialogShown
+            isDecoderDialogShown = isDialogShown,
+            // Add the brightness value
+            brightness = settings.brightness
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsScreenState())
 
@@ -110,6 +112,13 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun onShowMusicChange(show: Boolean) {
         viewModelScope.launch {
             repository.updateShowMusic(show)
+        }
+    }
+
+    // --- NEW FUNCTION ---
+    fun onBrightnessChange(newBrightness: Int) {
+        viewModelScope.launch {
+            repository.updateBrightness(newBrightness)
         }
     }
 }

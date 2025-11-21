@@ -20,8 +20,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.startActivity
@@ -53,6 +56,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.util.UnstableApi
+import coil3.compose.AsyncImage
 import com.applications.player.R
 
 import com.applications.player.model.Video
@@ -70,7 +74,9 @@ import org.koin.compose.viewmodel.koinViewModel
 // Correctly import the Folder data class, assuming it's here
 
 import com.applications.player.presentation.videosbyfolders.Folder
+import com.applications.player.util.ViewStyle
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 @Preview(showBackground = true)
 @Composable
@@ -89,6 +95,8 @@ fun HomeActivityScreen(
 
         // --- NEW: State for selected folder ---
         var selectedFolder by remember { mutableStateOf<Folder?>(null) }
+
+
 
         // --- NEW: Refresh data on screen resume ---
         DisposableEffect(lifecycleOwner) {
@@ -115,7 +123,11 @@ fun HomeActivityScreen(
                     selectedPlaylist = selectedPlaylist,
                     selectedFolder = selectedFolder,
                     onBackFromPlaylist = { playlistsViewModel.onBackFromPlaylist() },
-                    onBackFromFolder = { selectedFolder = null } // Lambda to clear the selected folder
+                    onBackFromFolder = {
+                        selectedFolder = null
+                    }, // Lambda to clear the selected folder
+                    onToggleViewStyle = { homeActivityViewModel.toggleViewStyle() },
+                    currentViewStyle = state.viewStyle
                 )
 
                 Spacer(modifier = Modifier.height(1.dp))
@@ -123,44 +135,46 @@ fun HomeActivityScreen(
                 Box(modifier = Modifier.weight(1f)) {
                     when (state.itemSelected) {
                         NavItem.FOLDERS -> {
-                            // --- MODIFICATION: Show videos if a folder is selected ---
                             if (selectedFolder == null) {
-                                // Show folder list
                                 VideosByFoldersScreen(
                                     folders = state.folders,
                                     onFolderClick = { folder ->
-                                        // Set the selected folder instead of launching a new activity
+                                        // --- THIS IS THE FIX ---
+                                        // 1. Tell the ViewModel to start loading the videos for the clicked folder.
+                                        homeActivityViewModel.loadVideosOfFolder(folder.path)
+
+                                        // 2. Update the UI state to show the video list screen.
                                         selectedFolder = folder
-                                    }, {}
+                                    },
+                                    viewStyle = state.viewStyle,
+                                    onStreamLinkClicked = {
+                                        // Handle the click if needed, or leave empty
+                                    }
                                 )
                             } else {
-                                // --- FIX IS HERE ---
-                                // Filter the main video list based on the selected folder's path
-                                val videosInFolder = remember(state.videos, selectedFolder) {
-                                    state.videos.filter { video ->
-                                        video.folderPath == selectedFolder?.path
-                                    }
-                                }
-
-                                // Show videos of the selected folder
+                                // This part is already correct and will now receive the data.
                                 VideoListScreen(
-                                    videoList = videosInFolder, // Use the filtered list
-                                    isLoading = false,
+                                    videoList = state.videosInFolder,
+                                    viewStyle = state.viewStyle,
+                                    isLoading = state.isLoadingVideosInFolder,
                                     title = selectedFolder!!.name,
                                     onVideoClick = { video ->
                                         homeActivityViewModel.onVideoSelected(video)
                                     },
                                     onBackPressed = {
-                                        // The app bar's back button will call this
                                         selectedFolder = null
+                                        homeActivityViewModel.clearVideosInFolder()
                                     }
                                 )
                             }
                         }
 
+
+
                         NavItem.VIDEOS -> {
                             VideoListScreen(
                                 videoList = state.videos,
+                                viewStyle = state.viewStyle,
                                 isLoading = state.isAllLoading,
                                 title = "All Videos",
                                 onVideoClick = { video1 ->
@@ -180,6 +194,7 @@ fun HomeActivityScreen(
                             } else {
                                 VideoListScreen(
                                     videoList = selectedPlaylist!!.videos,
+                                    viewStyle = state.viewStyle,
                                     isLoading = false,
                                     title = selectedPlaylist!!.name,
                                     onVideoClick = { video1 ->
@@ -246,33 +261,23 @@ fun BottomNavRow(
     state: HomeActivityState,
     playlistsViewModel: PlaylistsViewModel
 ) {
-    // ... no changes needed here
     val navItems = listOf(
         Triple("Folders", R.drawable.folders_unselected, R.drawable.folder_video),
         Triple("Videos", R.drawable.allvideo, R.drawable.allvideos_selected),
-        Triple(
-            "Playlists",
-            R.drawable.playlist,
-            R.drawable.play_list_selected
-        ), // Assuming you have a playlist_selected icon
-        Triple(
-            "Settings",
-            R.drawable.settings,
-            R.drawable.setting_selected
-        )   // Assuming you have a settings_selected icon
+        Triple("Playlists", R.drawable.playlist, R.drawable.play_list_selected),
+        Triple("Settings", R.drawable.settings, R.drawable.setting_selected)
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White) // Set the background color to white
-            .padding(vertical = 8.dp), // Add some vertical padding
-        horizontalArrangement = Arrangement.SpaceAround, // Distribute items evenly
+            .background(Color.White)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
         navItems.forEach { (label, unselectedIcon, selectedIcon) ->
 
-            // Determine which NavItem this iteration corresponds to
             val currentNavItem = when (label) {
                 "Folders" -> NavItem.FOLDERS
                 "Videos" -> NavItem.VIDEOS
@@ -281,38 +286,44 @@ fun BottomNavRow(
                 else -> throw IllegalArgumentException("Unknown nav item label: $label")
             }
 
-            // Check if this item is the one currently selected in the state
             val isSelected = state.itemSelected == currentNavItem
-
-            // Dynamically choose the icon and color based on the selection status
             val iconRes = if (isSelected) selectedIcon else unselectedIcon
-            //  val tint =if (isSelected) Color(0xFF6200EE) else Color.Black // Example: Purple for selected, Black for unselected
-            val tint = Color.Black // Example: Purple for selected, Black for unselected
+            val tint = Color.Black
 
-            // Each item is a Column containing an Icon and a Text
+            // --- THIS IS THE FIX ---
+            // 1. Determine the background color based on the selection state.
+            val backgroundColor = if (isSelected) Color.LightGray.copy(alpha = 0.4f) else Color.Transparent
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
+                    // 2. Add a weight modifier to ensure each item takes equal space.
+                    .weight(1f)
                     .clickable {
-                        // When clicked, notify the ViewModel to update the state
                         viewModel.onNavigationItemSelected(currentNavItem)
                         if (currentNavItem == NavItem.PLAYLISTS) {
                             playlistsViewModel.onPlaylistSelected(null)
                         }
                     }
-                    .padding(4.dp)
+                    // 3. Apply the background modifier with rounded corners.
+                    .background(
+                        color = backgroundColor,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    // 4. Add padding *inside* the background.
+                    .padding(vertical = 4.dp, horizontal = 2.dp)
             ) {
                 Icon(
                     painter = painterResource(id = iconRes),
                     contentDescription = label,
                     modifier = Modifier.size(24.dp),
-                    tint = tint // Apply the dynamic tint
+                    tint = tint
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = label,
                     textAlign = TextAlign.Center,
-                    color = tint // Also apply the tint to the text for consistency
+                    color = tint
                 )
             }
         }
@@ -320,10 +331,11 @@ fun BottomNavRow(
 }
 
 
+
 // --- MODIFIED TopAppBar ---
 // --- MODIFIED TopAppBar ---
 @Composable
-fun TopAppBar(
+fun TopAppBar1(
     navItem: NavItem,
     selectedPlaylist: PlaylistEntity?,
     selectedFolder: Folder?, // Add selectedFolder parameter
@@ -374,6 +386,78 @@ fun TopAppBar(
     }
 }
 
+// In C:/Users/Ramson/StudioProjects/videoplayer2/app/src/main/java/com/applications/player/presentation/homeScreen/HomeActivityScreen.kt
+
+// In C:/Users/Ramson/StudioProjects/videoplayer2/app/src/main/java/com/applications/player/presentation/homeScreen/HomeActivityScreen.kt
+
+// --- MODIFY THIS COMPOSABLE ---
+@Composable
+fun TopAppBar(
+    navItem: NavItem,
+    selectedPlaylist: PlaylistEntity?,
+    selectedFolder: Folder?,
+    onBackFromPlaylist: () -> Unit,
+    onBackFromFolder: () -> Unit,
+    // --- ADD THESE PARAMETERS ---
+    onToggleViewStyle: () -> Unit,
+    currentViewStyle: ViewStyle
+) {
+    val isInsidePlaylist = navItem == NavItem.PLAYLISTS && selectedPlaylist != null
+    val isInsideFolder = navItem == NavItem.FOLDERS && selectedFolder != null
+
+    val showBackButton = isInsidePlaylist || isInsideFolder
+    val title = when {
+        isInsidePlaylist -> selectedPlaylist!!.name
+        isInsideFolder -> selectedFolder!!.name
+        else -> "Vexo Video Player"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Transparent)
+            .padding(top = 40.dp, start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showBackButton) {
+            IconButton(onClick = {
+                if (isInsidePlaylist) onBackFromPlaylist() else onBackFromFolder()
+            }) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.Black
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.width(16.dp))
+        }
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Start
+        )
+
+        // --- MODIFIED: Actions Icon ---
+        IconButton(onClick = onToggleViewStyle) { // Use the passed-in click handler
+            // Determine which icon to show based on the current style
+            val iconRes = if (currentViewStyle == ViewStyle.GRID) {
+                R.drawable.vp_toggle_mode // Show list icon to switch to list
+            } else {
+                R.drawable.menu // Show grid icon to switch to grid
+            }
+            AsyncImage(
+                model = iconRes,
+                modifier = Modifier.size(25.dp),
+                contentDescription = "Toggle View Style"
+            )
+        }
+    }
+}
+
 
 // ... ChooseVideoFunctionality function remains the same ...
 @OptIn(UnstableApi::class)
@@ -391,42 +475,42 @@ fun ChooseVideoFunctionality(
     intent.putExtra("video", selectedVideo)
     startActivity(context, intent, null)
     return
-        /*SelectionDialog(
-            video = selectedVideo,
-            onDismiss = {homeActivityViewModel.onVideoSelected(null) },
-            onPlayClick = { video ->
-                homeActivityViewModel.onVideoSelected(null)
-                val intent = Intent(context, VideoPlayerActivityCompose::class.java)
-                intent.putExtra("video", video)
-                startActivity(context, intent, null)
-            },
-            onAddToPlayListChecked = {
-                homeActivityViewModel.onVideoSelected(null)
-                playlistsViewModel.onAddToPlaylistRequest(selectedVideo)
-            },
-            onRenameCLicked = {video ->
-                homeActivityViewModel.onVideoSelected(null)
-                homeActivityViewModel.onVideoRenameSelected(video) // Show rename dialog
+    /*SelectionDialog(
+        video = selectedVideo,
+        onDismiss = {homeActivityViewModel.onVideoSelected(null) },
+        onPlayClick = { video ->
+            homeActivityViewModel.onVideoSelected(null)
+            val intent = Intent(context, VideoPlayerActivityCompose::class.java)
+            intent.putExtra("video", video)
+            startActivity(context, intent, null)
+        },
+        onAddToPlayListChecked = {
+            homeActivityViewModel.onVideoSelected(null)
+            playlistsViewModel.onAddToPlaylistRequest(selectedVideo)
+        },
+        onRenameCLicked = {video ->
+            homeActivityViewModel.onVideoSelected(null)
+            homeActivityViewModel.onVideoRenameSelected(video) // Show rename dialog
 
-            },
-            onSplitClick = { video ->
-                homeActivityViewModel.onVideoSelected(null)
-                val intent = Intent(context, VideoSplittingActivity::class.java)
-                intent.putExtra("videoUri", video.uri)
-                startActivity(context, intent, null)
-            },
-            onMergeClick = { video ->
-                homeActivityViewModel.onVideoSelected(null)
-                val intent = Intent(context, VideoMergingActivity::class.java)
-                intent.putExtra("videoUri", video.uri)
-                startActivity(context, intent, null)
-            },
-            // --- NEW: Handle Delete Click ---
-            onDeleteClick = { video ->
-                homeActivityViewModel.onVideoSelected(null)
-                homeActivityViewModel.deleteVideo(video) // Corrected function call
-            }
-        )*/
+        },
+        onSplitClick = { video ->
+            homeActivityViewModel.onVideoSelected(null)
+            val intent = Intent(context, VideoSplittingActivity::class.java)
+            intent.putExtra("videoUri", video.uri)
+            startActivity(context, intent, null)
+        },
+        onMergeClick = { video ->
+            homeActivityViewModel.onVideoSelected(null)
+            val intent = Intent(context, VideoMergingActivity::class.java)
+            intent.putExtra("videoUri", video.uri)
+            startActivity(context, intent, null)
+        },
+        // --- NEW: Handle Delete Click ---
+        onDeleteClick = { video ->
+            homeActivityViewModel.onVideoSelected(null)
+            homeActivityViewModel.deleteVideo(video) // Corrected function call
+        }
+    )*/
 }
 
 
@@ -479,4 +563,92 @@ fun RenameVideoDialog(
             }
         }
     )
+}
+
+
+@Composable
+fun FolderGridItem(
+    folder: Folder,
+    onFolderClick: (Folder) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onFolderClick(folder) }
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.folder_video), // Your folder icon
+            contentDescription = folder.name,
+            modifier = Modifier.size(80.dp),
+            tint = Color.Unspecified // Use original icon colors
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = folder.name,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = "${folder.videoCount} Videos", // Example subtext
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+    }
+}
+
+@Composable
+fun VideoGridItem(
+    video: Video,
+    onVideoClick: (Video) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onVideoClick(video) }
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // You might want an AsyncImage here if you have thumbnails
+        Icon(
+            painter = painterResource(id = R.drawable.allvideo), // Placeholder icon
+            contentDescription = video.name,
+            modifier = Modifier.size(80.dp),
+            tint = Color.Black
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = video.name,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        // You can add duration or other info as subtext
+        Text(
+            text = formatDuration(video.duration), // Assuming you have a formatter
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+    }
+}
+
+fun formatDuration(durationMs: Long): String {
+    Log.e("", "time :{$durationMs}")
+    // Use the input duration directly as Long
+    val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(durationMs.toLong())
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+
+    Log.e("", "time :$hours:$minutes:$seconds   $totalSeconds")
+
+    return if (hours > 0) {
+        String.format("%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%02d:%02d", minutes, seconds)
+    }
 }
