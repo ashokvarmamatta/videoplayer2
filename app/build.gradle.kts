@@ -93,8 +93,7 @@ dependencies {
 
 
     //viewmodel
-    implementation("io.insert-koin:koin-androidx-compose:4.1.1") // This might not be needed for your setup
-//implementation("io.insert-koin:koin-androidx-viewmodel:3.5.0") // This is the key one!
+    implementation("io.insert-koin:koin-androidx-compose:4.1.1")
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-ui:1.8.0")
 

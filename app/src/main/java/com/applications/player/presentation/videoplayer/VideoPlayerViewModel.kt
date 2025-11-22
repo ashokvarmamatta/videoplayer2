@@ -13,6 +13,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize // MODIFICATION: Import VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
@@ -328,6 +329,17 @@ class VideoPlayerViewModel(
                 _state.update { it.copy(duration = player?.duration?.coerceAtLeast(0L) ?: 0L) }
             }
         }
+
+        // MODIFICATION START: Add this override function
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+            _state.update {
+                it.copy(
+                    videoWidth = videoSize.width,
+                    videoHeight = videoSize.height
+                )
+            }
+        }
+        // MODIFICATION END
     }
 
     override fun onCleared() {

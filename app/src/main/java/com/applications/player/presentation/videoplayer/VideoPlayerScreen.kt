@@ -76,6 +76,9 @@ fun VideoPlayerScreen(
     var userInteractedWithControls by remember { mutableStateOf(false) }
     var isScreenLocked by remember { mutableStateOf(false) }
     var isFullScreen by remember { mutableStateOf(false) }
+    var orientation by remember { mutableStateOf(settings.defaultScreenOrientation) }
+
+    val activity = LocalContext.current as? Activity
 
     // You need the coroutine scope to launch the long-press job
     val coroutineScope = rememberCoroutineScope()
@@ -300,42 +303,49 @@ fun VideoPlayerScreen(
             )
         }
 
-        // --- CHANGE 3: Center Play/Pause button needs to be hidden in PiP mode ---
-        AnimatedVisibility(
-            // Condition now includes a check for PiP mode
-            visible = !state.isInPipMode && !isScreenLocked && showControls,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            IconButton(
-                onClick = { viewModel.togglePlayPause() },
-                modifier = Modifier.size(72.dp) // No need to check for PiP size anymore
-            ) {
-                Icon(
-                    painter = if (state.isPlaying) (painterResource(R.drawable.pause)) else (painterResource(
-                        R.drawable.play_arrow
-                    )),
-                    contentDescription = if (state.isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
+        // --- (CHANGE 1) REMOVE THE CENTER PLAY/PAUSE BUTTON ---
+        // The entire AnimatedVisibility block for the center button is deleted.
 
-        // --- CHANGE 4: Bottom controls visibility is already correct, no change needed here ---
         AnimatedVisibility(
             visible = controlsVisible,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
+            // MODIFICATION START: Update the parameters passed to CustomPlayerControls
             CustomPlayerControls(
                 state = state,
                 viewModel = viewModel,
-                onToggleFullscreen = { isFullScreen = !isFullScreen },
+                onToggleFullscreen = { forceLandscape ->
+                    val newFullScreenState = !isFullScreen
+                    isFullScreen = newFullScreenState
+
+                    if (newFullScreenState) {
+                        if (forceLandscape) {
+                            // If the video is 16:9, force landscape
+                            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        }
+                        // If not forcing landscape (e.g., for 9:16 videos),
+                        // the orientation will be managed by SystemUiAndOrientationManager,
+                        // which respects the user's "defaultScreenOrientation" setting.
+                    } else {
+                        // When exiting fullscreen, revert to the default setting orientation.
+                        val defaultOrientation = when (settings.defaultScreenOrientation) {
+                            "Landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                            "Portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                            else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        }
+                        activity?.requestedOrientation = defaultOrientation
+                    }
+                },
                 isFullScreen = isFullScreen,
-                onToggleLock = { isScreenLocked = !isScreenLocked },
+                onToggleLock = {
+                    isScreenLocked = !isScreenLocked
+                    // When locking, immediately hide controls.
+                    if (isScreenLocked) {
+                        showControls = false
+                    }
+                },
                 isScreenLocked = isScreenLocked,
                 onEnterPipMode = onEnterPipMode,
                 onSelectSubtitle = {
@@ -344,11 +354,25 @@ fun VideoPlayerScreen(
                     subtitleLauncher.launch(arrayOf("application/x-subrip", "text/vtt"))
                 },
                 onUserInteract = { userInteractedWithControls = it },
-                onOptionsClicked = {
+                onTogglePlayPause = viewModel::togglePlayPause,
+
+                // Pass the new lambdas for the options dialog
+                onAddToPlaylist = {
                     viewModel.togglePlayPause(false)
-                    viewModel.onShowDIalog(true)
+                    playlistsViewModel.onAddToPlaylistRequest(video)
+                },
+                onRename = {
+                    viewModel.togglePlayPause(false)
+                    viewModel.onVideoRenameSelected(video)
+                },
+                onDelete = {
+                    viewModel.togglePlayPause(false)
+                    viewModel.deleteVideo(video)
+                    Toast.makeText(context, "Delete request sent for ${video.name}.", Toast.LENGTH_SHORT).show()
+                    onBackPressedDispatcher?.onBackPressed()
                 }
             )
+            // MODIFICATION END
         }
 
         // --- CHANGE 5: Loading indicator should also be hidden in PiP mode ---
@@ -364,7 +388,7 @@ fun VideoPlayerScreen(
             )
         }
 
-        // --- 3. DISPLAY THE DIALOG ---
+        /*// --- 3. DISPLAY THE DIALOG ---
         if (state.showOptonDialog) {
             ChooseVideoFunctionality(
                 selectedVideo = video,
@@ -374,7 +398,7 @@ fun VideoPlayerScreen(
                 onBackPressed = { onBackPressedDispatcher?.onBackPressed() } // Pass the back press callback
 
             )
-        }
+        }*/
 
         // --- NEW: Handle the rename dialog ---
         if (state.videoToRename != null) {
@@ -470,43 +494,38 @@ fun ChooseVideoFunctionality(
         SelectionDialog(
             video = selectedVideo,
             onDismiss = { videoPlayerViewModel.onShowDIalog(false)
-                        videoPlayerViewModel.togglePlayPause(true)},
-            onPlayClick = { video ->
-
-                val intent = Intent(context, VideoPlayerActivityCompose::class.java)
-                intent.putExtra("video", video)
-                startActivity(context, intent, null)
+                videoPlayerViewModel.togglePlayPause()
             },
-            onAddToPlayListChecked = {
+            onPlayClick = {
                 videoPlayerViewModel.onShowDIalog(false)
-                playlistsViewModel.onAddToPlaylistRequest(selectedVideo)
-                Toast.makeText(context, "Video Added to Playlist", Toast.LENGTH_SHORT).show()
-            },
-            onRenameCLicked = { video ->
-                videoPlayerViewModel.onShowDIalog(false)
-                videoPlayerViewModel.onVideoRenameSelected(video) // Show rename dialog
 
+            },
+            onAddToPlayListChecked = { video ->
+                videoPlayerViewModel.onShowDIalog(false)
+                playlistsViewModel.onAddToPlaylistRequest(video)
             },
             onSplitClick = { video ->
                 videoPlayerViewModel.onShowDIalog(false)
                 val intent = Intent(context, VideoSplittingActivity::class.java)
                 intent.putExtra("videoUri", video.uri)
-                startActivity(context, intent, null)
+                startActivity(context,intent,null)
+
+            },
+            onRenameCLicked = { video ->
+                videoPlayerViewModel.onShowDIalog(false)
+                videoPlayerViewModel.onVideoRenameSelected(video)
             },
             onMergeClick = { video ->
                 videoPlayerViewModel.onShowDIalog(false)
                 val intent = Intent(context, VideoMergingActivity::class.java)
                 intent.putExtra("videoUri", video.uri)
-                startActivity(context, intent, null)
+                startActivity(context,intent,null)
             },
-            // --- NEW: Handle Delete Click ---
             onDeleteClick = { video ->
                 videoPlayerViewModel.onShowDIalog(false)
-                videoPlayerViewModel.deleteVideo(video) // Corrected function call
-                Toast.makeText(context, "Video Deleted Successfully", Toast.LENGTH_SHORT).show()
-           onBackPressed()
+                videoPlayerViewModel.deleteVideo(video)
+                Toast.makeText(context, "Delete request sent for ${video.name}.", Toast.LENGTH_SHORT).show()
+                onBackPressed()
             }
         )
-
-
 }

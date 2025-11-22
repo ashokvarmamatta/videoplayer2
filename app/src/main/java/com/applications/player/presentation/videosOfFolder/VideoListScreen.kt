@@ -84,7 +84,7 @@ fun VideoListScreen(
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(videoList, key = { it.id }) { video ->
                                 VideoCard(video = video, onClick = { onVideoClick(video) })
-                                Divider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 8.dp))
+                               // Divider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 8.dp))
                             }
                         }
                     }

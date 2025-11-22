@@ -288,47 +288,46 @@ fun BottomNavRow(
 
             val isSelected = state.itemSelected == currentNavItem
             val iconRes = if (isSelected) selectedIcon else unselectedIcon
-            val tint = Color.Black
+            // MODIFICATION START
+            val tint = if (isSelected) Color.Blue else Color.Black
+            // MODIFICATION END
 
-            // --- THIS IS THE FIX ---
-            // 1. Determine the background color based on the selection state.
             val backgroundColor = if (isSelected) Color.LightGray.copy(alpha = 0.4f) else Color.Transparent
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    // 2. Add a weight modifier to ensure each item takes equal space.
                     .weight(1f)
                     .clickable {
                         viewModel.onNavigationItemSelected(currentNavItem)
                         if (currentNavItem == NavItem.PLAYLISTS) {
-                            playlistsViewModel.onPlaylistSelected(null)
+                            playlistsViewModel.onBackFromPlaylist()
                         }
                     }
-                    // 3. Apply the background modifier with rounded corners.
-                    .background(
-                        color = backgroundColor,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    // 4. Add padding *inside* the background.
-                    .padding(vertical = 4.dp, horizontal = 2.dp)
+                    .background(backgroundColor, shape = RoundedCornerShape(8.dp))
+                    .padding(4.dp)
             ) {
                 Icon(
                     painter = painterResource(id = iconRes),
                     contentDescription = label,
-                    modifier = Modifier.size(24.dp),
-                    tint = tint
+                    // MODIFICATION START
+                    tint = tint,
+                    // MODIFICATION END
+                    modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = label,
-                    textAlign = TextAlign.Center,
-                    color = tint
+                    // MODIFICATION START
+                    color = tint,
+                    // MODIFICATION END
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
                 )
             }
         }
     }
 }
+
 
 
 

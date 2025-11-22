@@ -22,5 +22,9 @@ data class VideoPlayerState(
 
     // --- ADD THESE NEW FLAGS ---
     val isVideoDeleted: Boolean = false,
-    val isVideoRenamed: Boolean = false
+    val isVideoRenamed: Boolean = false,
+
+
+    val videoWidth: Int = 0, // New
+    val videoHeight: Int = 0, // New
 )

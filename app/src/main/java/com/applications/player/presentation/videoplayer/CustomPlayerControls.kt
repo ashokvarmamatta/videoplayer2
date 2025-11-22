@@ -28,17 +28,23 @@ import com.applications.player.presentation.videosOfFolder.formatDuration
 fun CustomPlayerControls(
     state: VideoPlayerState,
     viewModel: VideoPlayerViewModel,
-    onToggleFullscreen: () -> Unit,
+    onToggleFullscreen: (forceLandscape: Boolean) -> Unit,
     isFullScreen: Boolean,
     onToggleLock: () -> Unit,
     isScreenLocked: Boolean,
     onEnterPipMode: () -> Unit,
     onSelectSubtitle: () -> Unit,
     onUserInteract: (Boolean) -> Unit,
-    onOptionsClicked:() -> Unit
+    // MODIFICATION: These lambdas will now be passed to the new dialog
+    onAddToPlaylist: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onTogglePlayPause: () -> Unit
 ) {
     var tempSliderValue by remember { mutableStateOf(state.currentPosition.toFloat()) }
     var showSpeedDialog by remember { mutableStateOf(false) }
+    // MODIFICATION: New state to control the options dialog visibility
+    var showOptionsDialog by remember { mutableStateOf(false) }
 
     val speedOptions = remember { listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f) }
 
@@ -46,6 +52,19 @@ fun CustomPlayerControls(
         if (!state.isSeeking) {
             tempSliderValue = state.currentPosition.toFloat()
         }
+    }
+
+    // MODIFICATION: Logic for the new "Options" dialog
+    if (showOptionsDialog) {
+        OptionsDialog(
+            onDismissRequest = { showOptionsDialog = false },
+            onAddToPlaylist = onAddToPlaylist,
+            onRename = onRename,
+            onDelete = onDelete,
+            onEnterPipMode = onEnterPipMode,
+            onShowSpeedDialog = { showSpeedDialog = true },
+            playbackSpeed = state.playbackSpeed
+        )
     }
 
     if (showSpeedDialog) {
@@ -116,19 +135,17 @@ fun CustomPlayerControls(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 8.dp).clip(RectangleShape),
-                 // Clip the slider to have sharp corners
                 colors = SliderDefaults.colors(
                     thumbColor = Color(0xFF526CF8),
                     activeTrackColor = Color(0xFF526CF8),
                     inactiveTrackColor = Color.Gray.copy(alpha = 0.5f)
                 ),
-                // --- CUSTOM THUMB IMPLEMENTATION ---
                 thumb = {
                     Icon(
                         painter = painterResource(id = R.drawable.thub_icon),
                         contentDescription = "Slider thumb",
-                        modifier = Modifier.size(20.dp), // Adjust size as needed
-                        tint = Color(0xFF526CF8) // Set the color of your icon
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFF526CF8)
                     )
                 }
             )
@@ -137,43 +154,124 @@ fun CustomPlayerControls(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // MODIFICATION: Removed "Speed" and "PiP" from this row
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            item {
+                PlayerControlButton(
+                    icon = painterResource(R.drawable.subtitles_),
+                    text = "Subtitles",
+                    onClick = { onSelectSubtitle.invoke() }
+                )
+            }
+            item {
+                PlayerControlButton(
+                    icon = if (isScreenLocked) painterResource(R.drawable.lock_open) else painterResource(R.drawable.lock),
+                    text = if (isScreenLocked) "Unlock" else "Lock",
+                    onClick = onToggleLock
+                )
+            }
+            item {
+                PlayerControlButton(
+                    icon = if (state.isPlaying) painterResource(R.drawable.pause) else painterResource(R.drawable.play_arrow),
+                    text = if (state.isPlaying) "Pause" else "Play",
+                    onClick = onTogglePlayPause
+                )
+            }
+            item {
+                PlayerControlButton(
+                    icon = if (isFullScreen) painterResource(R.drawable.fullscreen_exit_) else painterResource(R.drawable.fullscreen),
+                    text = if (isFullScreen) "Exit" else "Fullscreen",
+                    onClick = {
+                        val videoWidth = state.videoWidth
+                        val videoHeight = state.videoHeight
 
-                    item { PlayerControlButton(
-                        icon = if (isScreenLocked) painterResource(R.drawable.lock_open) else painterResource(R.drawable.lock),
-                        text = if (isScreenLocked) "Unlock" else "Lock",
-                        onClick = onToggleLock
-                    ) }
-            item { PlayerControlButton(
-                icon = if (isFullScreen) painterResource(R.drawable.fullscreen_exit_) else painterResource(R.drawable.fullscreen),
-                text = if (isFullScreen) "Exit" else "Fullscreen",
-                onClick = onToggleFullscreen
-            ) }
-            item { PlayerControlButton(
-                icon = painterResource(R.drawable.speed_), // Placeholder for a custom speed icon
-                text = "${String.format("%.2f", state.playbackSpeed)}x",
-                onClick = { showSpeedDialog = true }
-            ) }
-            item { PlayerControlButton(
-                icon = painterResource(R.drawable.picture_in_picture), // Placeholder for a custom PiP icon
-                text = "PiP",
-                onClick = onEnterPipMode
-            ) }
-            item { PlayerControlButton(
-                icon = painterResource(R.drawable.subtitles_), // Placeholder for a custom Subtitles icon
-                text = "Subtitles",
-                onClick = { onSelectSubtitle.invoke() }
-            ) }
-            item { PlayerControlButton(
-                icon = painterResource(R.drawable.settings1), // Placeholder for a custom Settings icon
-                text = "Options",
-                onClick = {  onOptionsClicked.invoke()  }
-            ) }
+                        // Force landscape only if video is wider than it is tall (e.g., 16:9)
+                        // and we are entering fullscreen, not exiting.
+                        val shouldForceLandscape = if (!isFullScreen) {
+                            videoWidth > videoHeight
+                        } else {
+                            // When exiting fullscreen, we don't need to force landscape.
+                            // The SystemUiAndOrientationManager will handle returning to the default.
+                            false
+                        }
+
+                        onToggleFullscreen(shouldForceLandscape)
+
+                    }
+                )
+            }
+            item {
+                PlayerControlButton(
+                    icon = painterResource(R.drawable.settings1),
+                    text = "Options",
+                    onClick = { showOptionsDialog = true } // This now opens the dialog
+                )
+            }
         }
+    }
+}
+
+// MODIFICATION: New composable for the options dialog
+@Composable
+private fun OptionsDialog(
+    onDismissRequest: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onEnterPipMode: () -> Unit,
+    onShowSpeedDialog: () -> Unit,
+    playbackSpeed: Float
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Video Options") },
+        text = {
+            Column {
+                DialogOption(icon = painterResource(R.drawable.playlist_a), text = "Add to playlist") {
+                    onAddToPlaylist()
+                    onDismissRequest()
+                }
+                DialogOption(icon = painterResource(R.drawable.rename), text = "Rename") {
+                    onRename()
+                    onDismissRequest()
+                }
+                DialogOption(icon = painterResource(R.drawable.del), text = "Delete") {
+                    onDelete()
+                    onDismissRequest()
+                }
+                DialogOption(icon = painterResource(R.drawable.speed_), text = "Playback Speed (${String.format("%.2f", playbackSpeed)}x)") {
+                    onShowSpeedDialog()
+                    onDismissRequest()
+                }
+                DialogOption(icon = painterResource(R.drawable.picture_in_picture), text = "Picture-in-Picture") {
+                    onEnterPipMode()
+                    onDismissRequest()
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismissRequest) { Text("CLOSE") }
+        }
+    )
+}
+
+// MODIFICATION: New helper composable for a row in the options dialog
+@Composable
+private fun DialogOption(icon: Painter, text: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(painter = icon, contentDescription = text, modifier = Modifier.size(24.dp))
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(text)
     }
 }
 
