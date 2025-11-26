@@ -91,13 +91,13 @@ class HomeActivity : AppCompatActivity() {
     // --- NEW FUNCTION TO SHOW THE DIALOG ---
     private fun showExitConfirmationDialog() {
         AlertDialog.Builder(this)
-            .setTitle("Exit App")
-            .setMessage("Are you sure you want to exit?")
-            .setPositiveButton("Yes") { _, _ ->
+            .setTitle(getString(R.string.exit_app))
+            .setMessage(getString(R.string.are_you_sure_you_want_to_exit))
+            .setPositiveButton(getString(R.string.ysn)) { _, _ ->
                 // If "Yes" is clicked, finish the activity and close the app
                 finish()
             }
-            .setNegativeButton("No", null) // If "No" is clicked, do nothing
+            .setNegativeButton(getString(R.string.nun), null) // If "No" is clicked, do nothing
             .show()
     }
 

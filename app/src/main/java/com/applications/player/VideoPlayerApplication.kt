@@ -2,6 +2,9 @@ package com.applications.player
 
 
 import android.app.Application
+import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import appModule
 
 
@@ -33,6 +36,16 @@ class VideoPlayerApplication : Application() {
         val imageLoader =
             ImageLoader.Builder(applicationContext).components { add(VideoFrameDecoder.Factory()) }
                 .build()
+
+
+        // This part is for setting the language when the app starts.
+        val sp = getSharedPreferences("prefs", MODE_PRIVATE)
+        val languageCode = sp.getString("language", "en") ?: "en"
+
+        // Set the locale for the application's lifetime.
+        val appLocale = LocaleListCompat.forLanguageTags(languageCode)
+        AppCompatDelegate.setApplicationLocales(appLocale)
+
 
     }
 

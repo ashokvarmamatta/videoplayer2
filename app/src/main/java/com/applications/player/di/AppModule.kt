@@ -26,6 +26,8 @@ val appModule = module {
     single { ViewStyleManager(androidContext()) }
 
 
+
+
     viewModel { VideoViewModel(get()) }
     viewModel { FoldersViewModel(get()) }
     viewModel { VideoPlayerViewModel(androidApplication(),get(),get()) }

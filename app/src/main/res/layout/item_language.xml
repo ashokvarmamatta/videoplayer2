@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/language_icon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/app_name"
+        android:gravity="center"
+        android:scaleType="centerCrop"
+        android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+        android:textColor="@color/white"
+        tools:src="@drawable/flag_hi" />
+
+    <TextView
+        android:id="@+id/language_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+
+        android:paddingStart="8dp"
+        android:textColor="@color/black"
+        android:paddingEnd="8dp"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        tools:text="Hindi" />
+
+    <ImageView
+        android:id="@+id/check"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@drawable/circle_primary_faded"
+        android:contentDescription="@string/app_name"
+        android:padding="4dp"
+        android:src="@drawable/circle_primary_transparent"
+        android:visibility="visible"
+        tools:src="@drawable/circle_primary"
+        tools:visibility="visible" />
+
+</LinearLayout>
+
+

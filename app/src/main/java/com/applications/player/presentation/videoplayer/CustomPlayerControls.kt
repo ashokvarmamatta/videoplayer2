@@ -186,6 +186,7 @@ fun CustomPlayerControls(
                     icon = if (isFullScreen) painterResource(R.drawable.fullscreen_exit_) else painterResource(R.drawable.fullscreen),
                     text = if (isFullScreen) "Exit" else "Fullscreen",
                     onClick = {
+                        // CHANGE 1: START - Updated Fullscreen logic
                         val videoWidth = state.videoWidth
                         val videoHeight = state.videoHeight
 
@@ -194,13 +195,12 @@ fun CustomPlayerControls(
                         val shouldForceLandscape = if (!isFullScreen) {
                             videoWidth > videoHeight
                         } else {
-                            // When exiting fullscreen, we don't need to force landscape.
-                            // The SystemUiAndOrientationManager will handle returning to the default.
+                            // When exiting fullscreen, let the system handle returning to default.
                             false
                         }
 
                         onToggleFullscreen(shouldForceLandscape)
-
+                        // CHANGE 1: END
                     }
                 )
             }
@@ -208,7 +208,14 @@ fun CustomPlayerControls(
                 PlayerControlButton(
                     icon = painterResource(R.drawable.settings1),
                     text = "Options",
-                    onClick = { showOptionsDialog = true } // This now opens the dialog
+                    onClick = {
+                        // CHANGE 2: START - Pause video and show dialog
+                        if (state.isPlaying) {
+                            onTogglePlayPause()
+                        }
+                        showOptionsDialog = true
+                        // CHANGE 2: END
+                    }
                 )
             }
         }

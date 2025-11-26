@@ -34,6 +34,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".presentation.basic.LanguagesActivity"
+            android:exported="true"/>
         <activity
             android:name=".presentation.homeScreen.HomeActivity"
             android:exported="true"></activity>

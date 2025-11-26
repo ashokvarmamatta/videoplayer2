@@ -1,6 +1,8 @@
 package com.applications.player.presentation.settings
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
@@ -27,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,14 +37,61 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.applications.player.R
+import com.applications.player.presentation.basic.LanguagesActivity
 import org.koin.androidx.compose.koinViewModel
 
+// A map to get language name from code, similar to the one in LanguagesActivity
+private val languageMap = mapOf(
+    "en" to "English",
+    "ar" to "العربية",
+    "bg" to "български",
+    "bn" to "বাংলা",
+    "ca" to "Català",
+    "cs" to "Čeština",
+    "da" to "Dansk",
+    "de" to "Deutsch",
+    "el" to "Ελληνικά",
+    "es" to "Español",
+    "fi" to "Suomi",
+    "fr" to "Français",
+    "hi" to "हिन्दी",
+    "hr" to "Hrvatski",
+    "hu" to "Magyar",
+    "in" to "Bahasa Indonesia",
+    "it" to "Italiano",
+    "iw" to "עברית",
+    "ja" to "日本語",
+    "ko" to "한국어",
+    "lt" to "Lietuvių",
+    "lv" to "Latviešu",
+    "nb" to "Norwegian",
+    "nl" to "Nederlands",
+    "pl" to "Polski",
+    "pt" to "Português",
+    "ro" to "Română",
+    "ru" to "Русский",
+    "sk" to "Slovenčina",
+    "sl" to "Slovenščina",
+    "sr" to "Српски",
+    "sv" to "Svenska",
+    "ta" to "தமிழ்",
+    "te" to "తెలుగు",
+    "th" to "ไทย",
+    "tr" to "Türkçe",
+    "ur" to "اردو",
+    "uk" to "Українська",
+    "vi" to "Tiếng Việt",
+    "zh-rCN" to "简体中文",
+    "zh-rTW" to "繁體中文"
+)
 
 
 /**
@@ -52,6 +102,12 @@ import org.koin.androidx.compose.koinViewModel
 fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    val sp = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+    val languageCode = sp.getString("language", "en") ?: "en"
+    val selectedLanguage = languageMap[languageCode] ?: "English"
+
+
 
     // This is where the dialog is conditionally shown
     if (uiState.isDecoderDialogShown) {
@@ -73,23 +129,25 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
             item {
                 SettingsNavigationItem(
                     icon = Icons.Default.Settings, // Placeholder
-                    title = "App Language",
-                    description = uiState.appLanguage,
-                    onClick = { /* Navigate to language settings */ }
+                    title = stringResource(R.string.app_language),
+                    description = selectedLanguage,
+                    onClick = {
+                        context.startActivity(LanguagesActivity.getIntent(context as Activity))
+                    }
                 )
             }
             item {
                 SettingsNavigationItem(
                     icon = Icons.Default.Settings, // Placeholder
-                    title = "Show .nomedia files",
-                    description = "Show files in folders containing .nomedia file.",
+                    title = stringResource(R.string.show_nomedia_files),
+                    description = stringResource(R.string.show_files_in_folders_containing_nomedia_file),
                     onClick = { /* Navigate to nomedia settings */ }
                 )
             }
             item {
                 SettingsSwitchItem(
                     icon = Icons.Default.Settings, // Placeholder
-                    title = "Default screen orientation",
+                    title = stringResource(R.string.default_screen_orientation),
                     checked = uiState.defaultScreenOrientation == "Landscape", // Assuming "Landscape" is the "On" state
                     description = uiState.defaultScreenOrientation,
                     onCheckedChange = { isChecked ->
@@ -101,7 +159,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
             item {
                 SettingsNavigationItem(
                     icon = Icons.Default.Settings, // Placeholder
-                    title = "Decoder",
+                    title = stringResource(R.string.decoder),
                     description = uiState.decoder,
                     onClick = viewModel::onShowDecoderDialog // This triggers the dialog
                 )
@@ -132,8 +190,8 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         item {
             SettingsSwitchWithDescription(
                 icon = Icons.Default.Settings, // Placeholder
-                title = "Remember aspect ratio",
-                description = "Remember aspect ratio for all videos.",
+                title = stringResource(R.string.remember_aspect_ratio),
+                description = stringResource(R.string.remember_aspect_ratio_for_all_videos),
                 checked = uiState.rememberAspectRatio,
                 onCheckedChange = viewModel::onRememberAspectRatioChange
             )
@@ -143,7 +201,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         item {
             SettingsSwitchItem(
                 icon = Icons.Default.Settings, // Placeholder
-                title = "Longpress to play at 2X Speed",
+                title = stringResource(R.string.longpress_to_play_at_2x_speed),
                 checked = uiState.longPressToPlayAt2xSpeed,
                 description = "On", // Displaying "On" below is optional, doing it as description for consistency
                 onCheckedChange = viewModel::onLongPressToPlayAt2xSpeedChange
@@ -152,26 +210,26 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         item {
             SettingsSwitchItem(
                 icon = Icons.Default.Settings, // Placeholder
-                title = "Remember background play",
+                title = stringResource(R.string.remember_background_play),
                 checked = uiState.rememberBackgroundPlay,
-                description = "Remember background play for all videos.",
+                description = stringResource(R.string.remember_background_play_for_all_videos),
                 onCheckedChange = viewModel::onRememberBackgroundPlayChange
             )
         }
         item {
             SettingsSwitchItem(
                 icon = Icons.Default.Settings, // Placeholder
-                title = "Remember brightness",
+                title = stringResource(R.string.remember_brightness),
                 checked = uiState.rememberBrightness,
 
-                description = "Turn on to remember brightness for all videos.",
+                description = stringResource(R.string.turn_on_to_remember_brightness_for_all_videos),
                 onCheckedChange = viewModel::onRememberBrightnessChange
             )
         }
         item {
             SettingsSwitchItem(
                 icon = Icons.Default.Settings, // Placeholder
-                title = "Double tap to fast forward and rewind",
+                title = stringResource(R.string.double_tap_to_fast_forward_and_rewind),
                 checked = uiState.doubleTapToFastForwardAndRewind,
                 description = "On",
                 onCheckedChange = viewModel::onDoubleTapToFastForwardAndRewindChange
@@ -180,13 +238,13 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         item {
             SettingsSwitchItem(
                 icon = Icons.Default.Settings, // Placeholder
-                title = "Auto Play Next",
+                title = stringResource(R.string.auto_play_next),
                 checked = uiState.autoPlayNext,
-                description = "Automatically play next video when current video ends.",
+                description = stringResource(R.string.automatically_play_next_video_when_current_video_ends),
                 onCheckedChange = viewModel::onAutoPlayNextChange
             )
         }
-        item {
+       /* item {
             SettingsSwitchItem(
                 icon = Icons.Default.Settings, // Placeholder
                 title = "Music",
@@ -194,7 +252,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
                 description = "Show music",
                 onCheckedChange = viewModel::onShowMusicChange
             )
-        }
+        }*/
 
         /*// About App Navigation Item
         item {
@@ -208,7 +266,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         item {
             SettingsNavigationItem(
                 icon = Icons.Default.Share, // Placeholder
-                title = "Share app",
+                title = stringResource(R.string.share_app),
                 description = null,
                 onClick = {
                     val sendIntent: Intent = Intent().apply {
@@ -224,7 +282,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         item {
             SettingsNavigationItem(
                 icon = Icons.Default.Star, // Placeholder
-                title = "Rate this app",
+                title = stringResource(R.string.rate_this_app),
                 description = null,
                 onClick = {
                     try {
@@ -252,7 +310,7 @@ fun DecoderSelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Decoder") },
+        title = { Text(stringResource(R.string.decoder1)) },
         text = {
             Column {
                 decoderOptions.forEach { decoder ->
@@ -388,7 +446,13 @@ fun SettingsSwitchWithDescription(
         // Switch
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFFFF8D3B), // Your desired color FF8D3B
+                uncheckedThumbColor = Color(0xFFE0E0E0),
+                uncheckedTrackColor = Color(0xFFBDBDBD)
+            )
         )
     }
 }
@@ -441,7 +505,13 @@ fun SettingsSwitchItem(
         // Switch
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFFFF8D3B), // Your desired color FF8D3B
+                uncheckedThumbColor = Color(0xFFE0E0E0),
+                uncheckedTrackColor = Color(0xFFBDBDBD)
+            )
         )
     }
 }

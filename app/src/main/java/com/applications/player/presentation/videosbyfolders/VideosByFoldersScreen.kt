@@ -84,7 +84,7 @@ fun VideosByFoldersScreen(folders: List<Folder>,
                 ) {
                     items(folders, key = { it.path }) { folder ->
                         FolderCard(folder = folder, onClick = { onFolderClick(folder) })
-                        Divider(color = Color.LightGray.copy(alpha = 0.5f))
+                        //Divider(color = Color.LightGray.copy(alpha = 0.5f))
                     }
                 }
             }

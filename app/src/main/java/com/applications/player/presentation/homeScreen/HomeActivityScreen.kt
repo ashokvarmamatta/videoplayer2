@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -262,10 +263,10 @@ fun BottomNavRow(
     playlistsViewModel: PlaylistsViewModel
 ) {
     val navItems = listOf(
-        Triple("Folders", R.drawable.folders_unselected, R.drawable.folder_video),
-        Triple("Videos", R.drawable.allvideo, R.drawable.allvideos_selected),
-        Triple("Playlists", R.drawable.playlist, R.drawable.play_list_selected),
-        Triple("Settings", R.drawable.settings, R.drawable.setting_selected)
+        Triple( stringResource(R.string.folders), R.drawable.folders_unselected, R.drawable.folder_video),
+        Triple(stringResource(R.string.videos), R.drawable.allvideo, R.drawable.allvideos_selected),
+        Triple(stringResource(R.string.playlists), R.drawable.playlist, R.drawable.play_list_selected),
+        Triple(stringResource(R.string.settings), R.drawable.settings, R.drawable.setting_selected)
     )
 
     Row(
@@ -279,17 +280,17 @@ fun BottomNavRow(
         navItems.forEach { (label, unselectedIcon, selectedIcon) ->
 
             val currentNavItem = when (label) {
-                "Folders" -> NavItem.FOLDERS
-                "Videos" -> NavItem.VIDEOS
-                "Playlists" -> NavItem.PLAYLISTS
-                "Settings" -> NavItem.SETTINGS
+                stringResource(R.string.folders) -> NavItem.FOLDERS
+                stringResource(R.string.videos) -> NavItem.VIDEOS
+                stringResource(R.string.playlists) -> NavItem.PLAYLISTS
+                stringResource(R.string.settings) -> NavItem.SETTINGS
                 else -> throw IllegalArgumentException("Unknown nav item label: $label")
             }
 
             val isSelected = state.itemSelected == currentNavItem
             val iconRes = if (isSelected) selectedIcon else unselectedIcon
             // MODIFICATION START
-            val tint = if (isSelected) Color.Blue else Color.Black
+            val tint = if (isSelected) Color(0xFFFF8D3B) else Color.Black
             // MODIFICATION END
 
             val backgroundColor = if (isSelected) Color.LightGray.copy(alpha = 0.4f) else Color.Transparent
@@ -318,7 +319,7 @@ fun BottomNavRow(
                 Text(
                     text = label,
                     // MODIFICATION START
-                    color = tint,
+                    color = Color.Black,
                     // MODIFICATION END
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
@@ -348,7 +349,7 @@ fun TopAppBar1(
     val title = when {
         isInsidePlaylist -> selectedPlaylist!!.name
         isInsideFolder -> selectedFolder!!.name
-        else -> "Vexo Video Player"
+        else -> stringResource(R.string.vexo_video_player)
     }
 
     Row(

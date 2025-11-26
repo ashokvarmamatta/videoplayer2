@@ -76,7 +76,14 @@ fun VideoPlayerScreen(
     var userInteractedWithControls by remember { mutableStateOf(false) }
     var isScreenLocked by remember { mutableStateOf(false) }
     var isFullScreen by remember { mutableStateOf(false) }
-    var orientation by remember { mutableStateOf(settings.defaultScreenOrientation) }
+
+
+    var currentOrientation by remember { mutableStateOf(settings.defaultScreenOrientation) }
+    LaunchedEffect(settings.defaultScreenOrientation, isFullScreen) {
+        if (!isFullScreen) {
+            currentOrientation = settings.defaultScreenOrientation
+        }
+    }
 
     val activity = LocalContext.current as? Activity
 
@@ -149,8 +156,9 @@ fun VideoPlayerScreen(
 
     SystemUiAndOrientationManager(
         isFullScreen = isFullScreen,
-        orientation = settings.defaultScreenOrientation
+        orientation = currentOrientation
     )
+
 
 
 
@@ -257,7 +265,6 @@ fun VideoPlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // --- CHANGE 1: This UnlockButton should also be hidden in PiP mode ---
         if (isScreenLocked && !state.isInPipMode) {
             UnlockButton(
                 onLongPress = {
@@ -280,7 +287,6 @@ fun VideoPlayerScreen(
         ) {
             TopAppBar(
                 title = { Text(video.name, color = Color.White) },    navigationIcon = {
-                    // This triggers onBackPressed() -> finish() -> onPause()
                     IconButton(onClick = { onBackPressedDispatcher?.onBackPressed() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
@@ -290,7 +296,6 @@ fun VideoPlayerScreen(
                     }
                 },
                 actions = {
-                    // This also triggers finish() -> onPause()
                     IconButton(onClick = { onFinishActivity() }) {
                         Icon(
                             painter = painterResource(id = R.drawable.fullscreen_exit_),
@@ -303,8 +308,6 @@ fun VideoPlayerScreen(
             )
         }
 
-        // --- (CHANGE 1) REMOVE THE CENTER PLAY/PAUSE BUTTON ---
-        // The entire AnimatedVisibility block for the center button is deleted.
 
         AnimatedVisibility(
             visible = controlsVisible,
@@ -312,7 +315,7 @@ fun VideoPlayerScreen(
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            // MODIFICATION START: Update the parameters passed to CustomPlayerControls
+            // --- FIX IS HERE: THIS IS THE ONLY PART THAT NEEDS TO BE CHANGED ---
             CustomPlayerControls(
                 state = state,
                 viewModel = viewModel,
@@ -322,26 +325,20 @@ fun VideoPlayerScreen(
 
                     if (newFullScreenState) {
                         if (forceLandscape) {
-                            // If the video is 16:9, force landscape
-                            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                            // If forcing landscape, UPDATE THE STATE.
+                            currentOrientation = "Landscape"
                         }
-                        // If not forcing landscape (e.g., for 9:16 videos),
-                        // the orientation will be managed by SystemUiAndOrientationManager,
-                        // which respects the user's "defaultScreenOrientation" setting.
+                        // If not forcing landscape (e.g., for tall videos),
+                        // the orientation is already managed by the `LaunchedEffect`
+                        // that keys off `settings.defaultScreenOrientation`, so we do nothing here.
                     } else {
-                        // When exiting fullscreen, revert to the default setting orientation.
-                        val defaultOrientation = when (settings.defaultScreenOrientation) {
-                            "Landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                            "Portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-                            else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        }
-                        activity?.requestedOrientation = defaultOrientation
+                        // When exiting fullscreen, revert to the default setting orientation by UPDATING THE STATE.
+                        currentOrientation = settings.defaultScreenOrientation
                     }
                 },
                 isFullScreen = isFullScreen,
                 onToggleLock = {
                     isScreenLocked = !isScreenLocked
-                    // When locking, immediately hide controls.
                     if (isScreenLocked) {
                         showControls = false
                     }
@@ -355,8 +352,6 @@ fun VideoPlayerScreen(
                 },
                 onUserInteract = { userInteractedWithControls = it },
                 onTogglePlayPause = viewModel::togglePlayPause,
-
-                // Pass the new lambdas for the options dialog
                 onAddToPlaylist = {
                     viewModel.togglePlayPause(false)
                     playlistsViewModel.onAddToPlaylistRequest(video)
@@ -372,10 +367,8 @@ fun VideoPlayerScreen(
                     onBackPressedDispatcher?.onBackPressed()
                 }
             )
-            // MODIFICATION END
         }
 
-        // --- CHANGE 5: Loading indicator should also be hidden in PiP mode ---
         if (state.duration == 0L && state.error == null && !state.isInPipMode) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
@@ -388,19 +381,6 @@ fun VideoPlayerScreen(
             )
         }
 
-        /*// --- 3. DISPLAY THE DIALOG ---
-        if (state.showOptonDialog) {
-            ChooseVideoFunctionality(
-                selectedVideo = video,
-                context = context,
-                videoPlayerViewModel = viewModel,
-                playlistsViewModel = playlistsViewModel,
-                onBackPressed = { onBackPressedDispatcher?.onBackPressed() } // Pass the back press callback
-
-            )
-        }*/
-
-        // --- NEW: Handle the rename dialog ---
         if (state.videoToRename != null) {
             RenameVideoDialog(
                 video = state.videoToRename!!,
@@ -453,32 +433,34 @@ fun UnlockButton(onLongPress: () -> Unit, onTap: () -> Unit) {
 }
 
 @Composable
-fun SystemUiAndOrientationManager(isFullScreen: Boolean, orientation: String) {
+fun SystemUiAndOrientationManager(
+    isFullScreen: Boolean,
+    orientation: String
+) {
     val context = LocalContext.current
-    val activity = context as? Activity ?: return
-    val window = activity.window
-    val insetsController =
-        remember(window) { WindowCompat.getInsetsController(window, window.decorView) }
+    val activity = context as? Activity
 
-    LaunchedEffect(isFullScreen, orientation) {
-        val requestedOrientation = when (orientation) {
-            "Landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            "Portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-            else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-        activity.requestedOrientation = requestedOrientation
+    LaunchedEffect(activity, isFullScreen, orientation) {
+        activity?.let {
+            val window = it.window
+            val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
 
-        if (isFullScreen) {
-            insetsController.hide(WindowInsetsCompat.Type.systemBars())
-            insetsController.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        } else {
-            insetsController.show(WindowInsetsCompat.Type.systemBars())
-            insetsController.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+            if (isFullScreen) {
+                windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+                windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+
+            it.requestedOrientation = when (orientation) {
+                "Landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                "Portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
         }
     }
 }
+
 
 @OptIn(UnstableApi::class)
 @Composable
