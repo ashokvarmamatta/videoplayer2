@@ -15,7 +15,7 @@ val ReadexPro = FontFamily(
     // Font(R.font.readx_pro_bold, FontWeight.Bold)
 )
 // Set of Material typography styles to start with
-val Typography = Typography(
+val Typography1 = Typography(
     bodyLarge = TextStyle(
         fontFamily = ReadexPro,
         fontWeight = FontWeight.Normal,
@@ -39,4 +39,46 @@ val Typography = Typography(
         letterSpacing = 0.5.sp
     )
     */
+)
+
+/*
+val provider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+val bodyFontFamily = FontFamily(
+    Font(
+        googleFont = GoogleFont("Plus Jakarta Sans"),
+        fontProvider = provider,
+    )
+)
+
+val displayFontFamily = FontFamily(
+    Font(
+        googleFont = GoogleFont("Inter"),
+        fontProvider = provider,
+    )
+)*/
+
+// Default Material 3 typography values
+val baseline = Typography()
+
+val Typography = Typography(
+    displayLarge = baseline.displayLarge.copy(fontFamily = ReadexPro),
+    displayMedium = baseline.displayMedium.copy(fontFamily = ReadexPro),
+    displaySmall = baseline.displaySmall.copy(fontFamily = ReadexPro),
+    headlineLarge = baseline.headlineLarge.copy(fontFamily = ReadexPro),
+    headlineMedium = baseline.headlineMedium.copy(fontFamily = ReadexPro),
+    headlineSmall = baseline.headlineSmall.copy(fontFamily = ReadexPro),
+    titleLarge = baseline.titleLarge.copy(fontFamily = ReadexPro),
+    titleMedium = baseline.titleMedium.copy(fontFamily = ReadexPro),
+    titleSmall = baseline.titleSmall.copy(fontFamily = ReadexPro),
+    bodyLarge = baseline.bodyLarge.copy(fontFamily = ReadexPro),
+    bodyMedium = baseline.bodyMedium.copy(fontFamily = ReadexPro),
+    bodySmall = baseline.bodySmall.copy(fontFamily = ReadexPro),
+    labelLarge = baseline.labelLarge.copy(fontFamily = ReadexPro),
+    labelMedium = baseline.labelMedium.copy(fontFamily = ReadexPro),
+    labelSmall = baseline.labelSmall.copy(fontFamily = ReadexPro),
 )

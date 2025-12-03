@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -128,7 +129,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
 
             item {
                 SettingsNavigationItem(
-                    icon = Icons.Default.Settings, // Placeholder
+                    icon = R.drawable.n_settings, // Placeholder
                     title = stringResource(R.string.app_language),
                     description = selectedLanguage,
                     onClick = {
@@ -138,7 +139,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
             }
             item {
                 SettingsNavigationItem(
-                    icon = Icons.Default.Settings, // Placeholder
+                    icon = R.drawable.no_media, // Placeholder
                     title = stringResource(R.string.show_nomedia_files),
                     description = stringResource(R.string.show_files_in_folders_containing_nomedia_file),
                     onClick = { /* Navigate to nomedia settings */ }
@@ -146,7 +147,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
             }
             item {
                 SettingsSwitchItem(
-                    icon = Icons.Default.Settings, // Placeholder
+                    icon = R.drawable.screen_rotation, // Placeholder
                     title = stringResource(R.string.default_screen_orientation),
                     checked = uiState.defaultScreenOrientation == "Landscape", // Assuming "Landscape" is the "On" state
                     description = uiState.defaultScreenOrientation,
@@ -158,7 +159,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
             }
             item {
                 SettingsNavigationItem(
-                    icon = Icons.Default.Settings, // Placeholder
+                    icon =R.drawable.decoder, // Placeholder
                     title = stringResource(R.string.decoder),
                     description = uiState.decoder,
                     onClick = viewModel::onShowDecoderDialog // This triggers the dialog
@@ -189,7 +190,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }*/
         item {
             SettingsSwitchWithDescription(
-                icon = Icons.Default.Settings, // Placeholder
+                icon = R.drawable.ratio, // Placeholder
                 title = stringResource(R.string.remember_aspect_ratio),
                 description = stringResource(R.string.remember_aspect_ratio_for_all_videos),
                 checked = uiState.rememberAspectRatio,
@@ -200,7 +201,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         // Simple Switch Items (Title + Switch)
         item {
             SettingsSwitchItem(
-                icon = Icons.Default.Settings, // Placeholder
+                icon =R.drawable._x_speed, // Placeholder
                 title = stringResource(R.string.longpress_to_play_at_2x_speed),
                 checked = uiState.longPressToPlayAt2xSpeed,
                 description = "On", // Displaying "On" below is optional, doing it as description for consistency
@@ -209,7 +210,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }
         item {
             SettingsSwitchItem(
-                icon = Icons.Default.Settings, // Placeholder
+                icon = R.drawable.bg_play, // Placeholder
                 title = stringResource(R.string.remember_background_play),
                 checked = uiState.rememberBackgroundPlay,
                 description = stringResource(R.string.remember_background_play_for_all_videos),
@@ -218,7 +219,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }
         item {
             SettingsSwitchItem(
-                icon = Icons.Default.Settings, // Placeholder
+                icon = R.drawable.brightness, // Placeholder
                 title = stringResource(R.string.remember_brightness),
                 checked = uiState.rememberBrightness,
 
@@ -228,7 +229,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }
         item {
             SettingsSwitchItem(
-                icon = Icons.Default.Settings, // Placeholder
+                icon = R.drawable._x_speed_1, // Placeholder
                 title = stringResource(R.string.double_tap_to_fast_forward_and_rewind),
                 checked = uiState.doubleTapToFastForwardAndRewind,
                 description = "On",
@@ -237,7 +238,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }
         item {
             SettingsSwitchItem(
-                icon = Icons.Default.Settings, // Placeholder
+                icon = R.drawable.auto_play_next, // Placeholder
                 title = stringResource(R.string.auto_play_next),
                 checked = uiState.autoPlayNext,
                 description = stringResource(R.string.automatically_play_next_video_when_current_video_ends),
@@ -265,7 +266,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }*/
         item {
             SettingsNavigationItem(
-                icon = Icons.Default.Share, // Placeholder
+                icon = R.drawable.share, // Placeholder
                 title = stringResource(R.string.share_app),
                 description = null,
                 onClick = {
@@ -281,7 +282,7 @@ fun SettingsHomeScreen(viewModel: SettingsViewModel = koinViewModel()) {
         }
         item {
             SettingsNavigationItem(
-                icon = Icons.Default.Star, // Placeholder
+                icon = R.drawable.rate, // Placeholder
                 title = stringResource(R.string.rate_this_app),
                 description = null,
                 onClick = {
@@ -351,7 +352,7 @@ fun DecoderSelectionDialog(
  */
 @Composable
 fun SettingsNavigationItem(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     description: String?,
     onClick: () -> Unit,
@@ -363,13 +364,21 @@ fun SettingsNavigationItem(
             .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icon
+       /* // Icon
         Icon(
             imageVector = icon,
             contentDescription = null, // Content description for setting icon isn't necessary
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp)
+        )*/
+
+        AsyncImage(
+            model = icon,
+            contentDescription = "",
+            modifier = Modifier.size(24.dp),
+            colorFilter = ColorFilter.tint(Color(0xFFFF702F))
         )
+
         // Text Content
         Column(
             modifier = Modifier
@@ -406,7 +415,7 @@ fun SettingsNavigationItem(
  */
 @Composable
 fun SettingsSwitchWithDescription(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     description: String,
     checked: Boolean,
@@ -420,10 +429,16 @@ fun SettingsSwitchWithDescription(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Icon
-        Icon(
+       /* Icon(
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )*/
+
+        AsyncImage(
+            model = icon,
+            contentDescription = "",
             modifier = Modifier.size(24.dp)
         )
         // Text Content
@@ -449,7 +464,7 @@ fun SettingsSwitchWithDescription(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFFFF8D3B), // Your desired color FF8D3B
+                checkedTrackColor = Color(0xFF5F381C), // Your desired color FF8D3B
                 uncheckedThumbColor = Color(0xFFE0E0E0),
                 uncheckedTrackColor = Color(0xFFBDBDBD)
             )
@@ -463,7 +478,7 @@ fun SettingsSwitchWithDescription(
  */
 @Composable
 fun SettingsSwitchItem(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     checked: Boolean,
     description: String?,
@@ -477,10 +492,15 @@ fun SettingsSwitchItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Icon
-        Icon(
+       /* Icon(
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )*/
+        AsyncImage(
+            model = icon,
+            contentDescription = "",
             modifier = Modifier.size(24.dp)
         )
         // Text Content
@@ -508,7 +528,7 @@ fun SettingsSwitchItem(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFFFF8D3B), // Your desired color FF8D3B
+                checkedTrackColor = Color(0xFF5F381C), // Your desired color FF8D3B
                 uncheckedThumbColor = Color(0xFFE0E0E0),
                 uncheckedTrackColor = Color(0xFFBDBDBD)
             )

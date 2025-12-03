@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -75,6 +76,7 @@ import org.koin.compose.viewmodel.koinViewModel
 // Correctly import the Folder data class, assuming it's here
 
 import com.applications.player.presentation.videosbyfolders.Folder
+import com.applications.player.ui.theme.ReadexPro
 import com.applications.player.util.ViewStyle
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -290,7 +292,7 @@ fun BottomNavRow(
             val isSelected = state.itemSelected == currentNavItem
             val iconRes = if (isSelected) selectedIcon else unselectedIcon
             // MODIFICATION START
-            val tint = if (isSelected) Color(0xFFFF8D3B) else Color.Black
+            val tint = if (isSelected) Color(0xFFFF8D3B) else Color(0xFF5F381C)
             // MODIFICATION END
 
             val backgroundColor = if (isSelected) Color.LightGray.copy(alpha = 0.4f) else Color.Transparent
@@ -314,14 +316,15 @@ fun BottomNavRow(
                     // MODIFICATION START
                     tint = tint,
                     // MODIFICATION END
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(25.dp)
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = label,
                     // MODIFICATION START
-                    color = Color.Black,
-                    // MODIFICATION END
-                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF000000),
+                   fontFamily = ReadexPro,
+                    style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center
                 )
             }
@@ -426,7 +429,7 @@ fun TopAppBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.Black
+                    tint = Color(0xFFFF702F)
                 )
             }
         } else {
@@ -447,10 +450,10 @@ fun TopAppBar(
             val iconRes = if (currentViewStyle == ViewStyle.GRID) {
                 R.drawable.vp_toggle_mode // Show list icon to switch to list
             } else {
-                R.drawable.menu // Show grid icon to switch to grid
+                R.drawable.toggle_list // Show grid icon to switch to grid
             }
             AsyncImage(
-                model = iconRes,
+                model = iconRes, colorFilter = ColorFilter.tint(Color(0xFFFF702F)),
                 modifier = Modifier.size(25.dp),
                 contentDescription = "Toggle View Style"
             )

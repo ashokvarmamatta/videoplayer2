@@ -286,7 +286,7 @@ fun VideoPlayerScreen(
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             TopAppBar(
-                title = { Text(video.name, color = Color.White) },    navigationIcon = {
+                title = { Text(video.name, color = Color.White, maxLines = 1) },    navigationIcon = {
                     IconButton(onClick = { onBackPressedDispatcher?.onBackPressed() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
@@ -296,13 +296,13 @@ fun VideoPlayerScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onFinishActivity() }) {
+                    /*IconButton(onClick = { onFinishActivity() }) {
                         Icon(
                             painter = painterResource(id = R.drawable.fullscreen_exit_),
                             contentDescription = "Close Player",
                             tint = Color.White
                         )
-                    }
+                    }*/
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black.copy(alpha = 0.5f))
             )
